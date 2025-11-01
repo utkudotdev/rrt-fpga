@@ -1,246 +1,207 @@
-use super::{NNIndex, PointId};
-use na::{SMatrix, SVector};
+use std::ops::Index;
+
+use na::SVector;
 use nalgebra as na;
-use std::f32;
 
-const LEAF_SQUARED_TOL: f32 = 1e-7;
+use crate::ds::point_list::PointList;
 
-type NodeId = usize;
+use super::NNIndex;
 
-struct SplitNode<const DIMS: usize> {
-    lower: NodeId,
-    upper: NodeId,
-    split_idx: usize,
-    split_value: f32,
+enum Node<const DIMS: usize, const LEAF_CAP: usize> {
+    Internal {
+        dim: usize,
+        val: f32,
+        left: Box<Node<DIMS, LEAF_CAP>>,
+        right: Box<Node<DIMS, LEAF_CAP>>,
+    },
+    Leaf {
+        point_indices: [usize; LEAF_CAP],
+        len: usize,
+    },
 }
 
-struct LeafNode<const DIMS: usize, const LEAF_SIZE: usize> {
-    points: SMatrix<f32, DIMS, LEAF_SIZE>,
-    point_ids: [usize; LEAF_SIZE],
-    count: usize,
+pub struct KdTree<const DIMS: usize, const LEAF_CAP: usize> {
+    points: Vec<SVector<f32, DIMS>>,
+    root: Node<DIMS, LEAF_CAP>,
 }
 
-impl<const DIMS: usize, const LEAF_SIZE: usize> LeafNode<DIMS, LEAF_SIZE> {
-    fn new() -> Self {
-        Self {
-            points: SMatrix::zeros(),
-            point_ids: [0; LEAF_SIZE],
-            count: 0,
-        }
-    }
-
-    fn try_add_point(&mut self, point: &SVector<f32, DIMS>, id: usize) -> bool {
-        if self.full() {
-            return false;
-        }
-
-        self.points.set_column(self.count, point);
-        self.point_ids[self.count] = id;
-        self.count += 1;
-
-        true
-    }
-
-    fn empty(&self) -> bool {
-        self.count == 0
-    }
-
-    fn full(&self) -> bool {
-        self.count == LEAF_SIZE
-    }
-
-    fn closest_point(&self, query: &SVector<f32, DIMS>) -> Option<(usize, f32)> {
-        if self.empty() {
-            return None;
-        }
-
-        let mut min_dist_sq = f32::INFINITY;
-        let mut result_idx = 0;
-
-        for i in 0..self.count {
-            let diff = self.points.column(i) - query;
-            let dist_sq = diff.norm_squared();
-            if dist_sq < min_dist_sq {
-                min_dist_sq = dist_sq;
-                result_idx = i;
-            }
-        }
-        Some((result_idx, min_dist_sq))
-    }
-
-    fn find_split(&self, to_add: &SVector<f32, DIMS>) -> (usize, f32) {
-        let pts_view = self.points.columns(0, self.count);
-        let mut new_matrix = pts_view.insert_column(self.points.ncols(), 0.0);
-        new_matrix.set_column(new_matrix.ncols() - 1, to_add);
-
-        let mean = new_matrix.column_mean();
-        let variance = new_matrix.column_variance();
-
-        let (split_idx, _) = variance.argmax();
-
-        (split_idx, mean[split_idx])
-    }
-}
-
-enum Node<const DIMS: usize, const LEAF_SIZE: usize> {
-    Split(SplitNode<DIMS>),
-    Leaf(LeafNode<DIMS, LEAF_SIZE>),
-}
-
-pub struct KDTree<const DIMS: usize, const LEAF_SIZE: usize> {
-    nodes: Vec<Node<DIMS, LEAF_SIZE>>,
-    point_id_to_tree_loc: Vec<usize>,
-}
-
-impl<const DIMS: usize, const LEAF_SIZE: usize> KDTree<DIMS, LEAF_SIZE> {
+impl<const DIMS: usize, const LEAF_CAP: usize> KdTree<DIMS, LEAF_CAP> {
     pub fn new() -> Self {
         Self {
-            nodes: vec![Node::Leaf(LeafNode::new())],
-            point_id_to_tree_loc: Vec::new(),
+            points: Vec::new(),
+            root: Node::Leaf {
+                point_indices: [0; LEAF_CAP],
+                len: 0,
+            },
         }
     }
 
-    fn nn_helper(&self, node_id: NodeId, query: &SVector<f32, DIMS>) -> (usize, f32) {
-        match &self.nodes[node_id] {
-            Node::Leaf(leaf) => {
-                if leaf.empty() {
-                    return (0, f32::INFINITY);
-                }
-                leaf.closest_point(query)
-                    .map(|(idx, sq_dist)| (leaf.point_ids[idx], sq_dist))
-                    .unwrap_or((0, f32::INFINITY))
-            }
-            Node::Split(split) => {
-                let query_val = query[split.split_idx];
-                let (near_child, far_child) = if query_val <= split.split_value {
-                    (split.lower, split.upper)
+    fn add_point_to_node(
+        points: &[SVector<f32, DIMS>],
+        point_idx: usize,
+        node: &mut Node<DIMS, LEAF_CAP>,
+        depth: usize,
+    ) {
+        match node {
+            Node::Internal {
+                dim,
+                val,
+                left,
+                right,
+            } => {
+                let point = points[point_idx];
+                if point[*dim] < *val {
+                    Self::add_point_to_node(points, point_idx, left, depth + 1);
                 } else {
-                    (split.upper, split.lower)
-                };
+                    Self::add_point_to_node(points, point_idx, right, depth + 1);
+                }
+            }
+            Node::Leaf { point_indices, len } => {
+                if *len < LEAF_CAP {
+                    point_indices[*len] = point_idx;
+                    *len += 1;
+                } else {
+                    let dim = depth % DIMS;
+                    let mut mean = SVector::<f32, DIMS>::zeros();
+                    for i in 0..*len {
+                        mean += points[point_indices[i]];
+                    }
+                    mean += points[point_idx];
+                    mean /= (*len + 1) as f32;
+                    let val = mean[dim];
 
-                let (mut best_id, mut best_dist_sq) = self.nn_helper(near_child, query);
+                    let mut left = Box::new(Node::Leaf {
+                        point_indices: [0; LEAF_CAP],
+                        len: 0,
+                    });
+                    let mut right = Box::new(Node::Leaf {
+                        point_indices: [0; LEAF_CAP],
+                        len: 0,
+                    });
 
-                let dist_to_plane = query_val - split.split_value;
-                let dist_sq_to_plane = dist_to_plane * dist_to_plane;
+                    let mut indices_to_reinsert = Vec::with_capacity(LEAF_CAP + 1);
+                    for i in 0..*len {
+                        indices_to_reinsert.push(point_indices[i]);
+                    }
+                    indices_to_reinsert.push(point_idx);
 
-                if dist_sq_to_plane < best_dist_sq {
-                    let (candidate_id, candidate_dist_sq) = self.nn_helper(far_child, query);
-                    if candidate_dist_sq < best_dist_sq {
-                        best_id = candidate_id;
-                        best_dist_sq = candidate_dist_sq;
+                    for idx in indices_to_reinsert {
+                        let point = points[idx];
+                        if point[dim] < val {
+                            Self::add_point_to_node(points, idx, &mut left, depth + 1);
+                        } else {
+                            Self::add_point_to_node(points, idx, &mut right, depth + 1);
+                        }
+                    }
+
+                    *node = Node::Internal {
+                        dim,
+                        val,
+                        left,
+                        right,
+                    };
+                }
+            }
+        }
+    }
+
+    fn closest_point_in_node(
+        &self,
+        point: SVector<f32, DIMS>,
+        node: &Node<DIMS, LEAF_CAP>,
+        best_dist_sq: &mut f32,
+        best_idx: &mut usize,
+        depth: usize,
+    ) {
+        match node {
+            Node::Internal {
+                dim,
+                val,
+                left,
+                right,
+            } => {
+                let dim_dist = point[*dim] - val;
+                if dim_dist < 0. {
+                    self.closest_point_in_node(point, left, best_dist_sq, best_idx, depth + 1);
+                    if dim_dist.powi(2) < *best_dist_sq {
+                        self.closest_point_in_node(point, right, best_dist_sq, best_idx, depth + 1);
+                    }
+                } else {
+                    self.closest_point_in_node(point, right, best_dist_sq, best_idx, depth + 1);
+                    if dim_dist.powi(2) < *best_dist_sq {
+                        self.closest_point_in_node(point, left, best_dist_sq, best_idx, depth + 1);
                     }
                 }
-                (best_id, best_dist_sq)
+            }
+            Node::Leaf { point_indices, len } => {
+                for i in 0..*len {
+                    let idx = point_indices[i];
+                    let dist_sq = (self.points[idx] - point).norm_squared();
+                    if dist_sq < *best_dist_sq {
+                        *best_dist_sq = dist_sq;
+                        *best_idx = idx;
+                    }
+                }
             }
         }
-    }
-
-    fn add_leaf(&mut self) -> NodeId {
-        let id = self.nodes.len();
-        self.nodes.push(Node::Leaf(LeafNode::new()));
-        id
     }
 }
 
-impl<const DIMS: usize, const LEAF_SIZE: usize> NNIndex<DIMS> for KDTree<DIMS, LEAF_SIZE> {
+impl<const DIMS: usize, const LEAF_CAP: usize> Index<usize> for KdTree<DIMS, LEAF_CAP> {
+    type Output = SVector<f32, DIMS>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.points[index]
+    }
+}
+
+impl<const DIMS: usize, const LEAF_CAP: usize> PointList<DIMS> for KdTree<DIMS, LEAF_CAP> {
     fn add_point(&mut self, point: SVector<f32, DIMS>) -> bool {
-        let new_id = self.point_id_to_tree_loc.len();
-        let mut node_id = 0;
-
-        while let Node::Split(split) = &self.nodes[node_id] {
-            node_id = if point[split.split_idx] > split.split_value {
-                split.upper
-            } else {
-                split.lower
-            };
-        }
-
-        if let Node::Leaf(leaf) = &mut self.nodes[node_id] {
-            if let Some((_, sq_dist)) = leaf.closest_point(&point) {
-                if sq_dist < LEAF_SQUARED_TOL {
-                    return false;
-                }
-            }
-
-            if leaf.try_add_point(&point, new_id) {
-                self.point_id_to_tree_loc
-                    .push(node_id * LEAF_SIZE + (leaf.count - 1));
-                return true;
-            }
-        }
-
-        let (split_idx, split_value) = if let Node::Leaf(leaf) = &self.nodes[node_id] {
-            leaf.find_split(&point)
-        } else {
-            unreachable!();
-        };
-
-        let lower_id = self.add_leaf();
-        let upper_id = self.add_leaf();
-
-        let old_leaf_points;
-        let old_leaf_point_ids;
-        let old_leaf_count;
-
-        if let Node::Leaf(old_leaf) = &self.nodes[node_id] {
-            old_leaf_points = old_leaf.points;
-            old_leaf_point_ids = old_leaf.point_ids;
-            old_leaf_count = old_leaf.count;
-        } else {
-            unreachable!();
-        }
-
-        for i in 0..old_leaf_count {
-            let p = old_leaf_points.column(i);
-            let pid = old_leaf_point_ids[i];
-            let target_id = if p[split_idx] > split_value {
-                upper_id
-            } else {
-                lower_id
-            };
-
-            if let Node::Leaf(target_leaf) = &mut self.nodes[target_id] {
-                assert!(target_leaf.try_add_point(&p.into(), pid));
-                self.point_id_to_tree_loc[pid] = target_id * LEAF_SIZE + (target_leaf.count - 1);
-            }
-        }
-
-        let new_target_id = if point[split_idx] > split_value {
-            upper_id
-        } else {
-            lower_id
-        };
-
-        if let Node::Leaf(new_target_leaf) = &mut self.nodes[new_target_id] {
-            assert!(new_target_leaf.try_add_point(&point, new_id));
-            self.point_id_to_tree_loc
-                .push(new_target_id * LEAF_SIZE + (new_target_leaf.count - 1));
-        }
-
-        self.nodes[node_id] = Node::Split(SplitNode {
-            lower: lower_id,
-            upper: upper_id,
-            split_idx,
-            split_value,
-        });
-
+        let point_idx = self.points.len();
+        self.points.push(point);
+        Self::add_point_to_node(&self.points, point_idx, &mut self.root, 0);
         true
     }
 
-    fn get_point(&self, id: PointId) -> SVector<f32, DIMS> {
-        let tree_loc = self.point_id_to_tree_loc[id.0];
-        if let Node::Leaf(leaf) = &self.nodes[tree_loc / LEAF_SIZE] {
-            leaf.points.column(tree_loc % LEAF_SIZE).into()
-        } else {
-            unreachable!()
-        }
+    fn len(&self) -> usize {
+        self.points.len()
     }
+}
 
-    fn size(&self) -> usize {
-        self.point_id_to_tree_loc.len()
+impl<const DIMS: usize, const LEAF_CAP: usize> NNIndex<DIMS> for KdTree<DIMS, LEAF_CAP> {
+    fn closest_point(&self, point: SVector<f32, DIMS>) -> usize {
+        assert!(
+            !self.points.is_empty(),
+            "Cannot find closest points in an empty set."
+        );
+
+        let mut best_dist_sq = f32::INFINITY;
+        let mut best_idx = 0;
+        self.closest_point_in_node(point, &self.root, &mut best_dist_sq, &mut best_idx, 0);
+        best_idx
     }
+}
 
-    fn closest_point(&self, point: SVector<f32, DIMS>) -> PointId {
-        PointId(self.nn_helper(0, &point).0)
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_kdtree_closest_point() {
+        let mut tree = KdTree::<2, 4>::new();
+        tree.add_point(SVector::from([2., 3.]));
+        tree.add_point(SVector::from([5., 4.]));
+        tree.add_point(SVector::from([9., 6.]));
+        tree.add_point(SVector::from([4., 7.]));
+        tree.add_point(SVector::from([8., 1.]));
+        tree.add_point(SVector::from([7., 2.]));
+
+        let query_point = SVector::from([9., 2.]);
+        let closest_idx = tree.closest_point(query_point);
+        assert_eq!(closest_idx, 4);
+
+        let query_point = SVector::from([1., 1.]);
+        let closest_idx = tree.closest_point(query_point);
+        assert_eq!(closest_idx, 0);
     }
 }
