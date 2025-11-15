@@ -1,19 +1,33 @@
-mod ds;
+pub mod alg;
+pub mod ds;
+pub mod vanilla;
 
 extern crate nalgebra as na;
-use ds::point_list::PointList;
-use na::SVector;
+use ds::grid::OccupancyGrid;
+use na::Vector2;
 
-struct RRTResult<const DIMS: usize> {
-    points: Box<dyn PointList<DIMS>>,
-    tree: Vec<Vec<usize>>,
-    path: Option<Vec<usize>>,
+use crate::ds::point_list::PointList;
+
+pub struct RRTResult<PL: PointList<2>> {
+    pub points: PL,
+    pub tree: Vec<Vec<usize>>,
+    pub path: Option<Vec<usize>>,
 }
 
-trait RRTAlgorithm<const DIMS: usize> {
+pub struct RRTParameters {
+    pub num_points: usize,
+    pub move_dist: f32,
+    pub min_bound: Vector2<f32>,
+    pub max_bound: Vector2<f32>,
+    pub sq_dist_tol: f32,
+}
+
+pub trait RRTAlgorithm<PL: PointList<2>> {
     fn run(
-        start: SVector<f32, DIMS>,
-        goal: SVector<f32, DIMS>,
-        is_edge_free: impl FnMut(SVector<f32, DIMS>, SVector<f32, DIMS>) -> bool,
-    ) -> RRTResult<DIMS>;
+        &self,
+        start: &Vector2<f32>,
+        goal: &Vector2<f32>,
+        grid: &OccupancyGrid,
+        params: &RRTParameters,
+    ) -> RRTResult<PL>;
 }

@@ -1,6 +1,6 @@
 use na::Vector2;
 
-struct OccupancyGrid {
+pub struct OccupancyGrid {
     storage: Box<[bool]>,
     x_cells: usize,
     y_cells: usize,
