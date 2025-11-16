@@ -4,7 +4,6 @@ use nalgebra as na;
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use rrt::cpu::ds::kdtree::KdTree;
-use rrt::shared::ds::nn_index::NNIndex;
 use rrt::shared::ds::point_list::PointList;
 
 fn generate_points<const DIMS: usize>(

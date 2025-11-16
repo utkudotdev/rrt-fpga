@@ -20,7 +20,6 @@ const MAX_BOUND: Vector2<f32> = Vector2::new(0.1, 0.1);
 const SQ_GOAL_TOL: f32 = 0.0001;
 const GRID_RESOLUTION: f32 = 0.01;
 const CIRCLE_RADIUS: f32 = 5.0;
-const LEAF_CAP: usize = 4;
 
 fn run_vis<PL: PointList<2>>(
     result: &RRTResult<PL>,
@@ -178,7 +177,7 @@ fn main() {
         sq_dist_tol: SQ_GOAL_TOL,
     };
 
-    let result: RRTResult<KdTree<2, LEAF_CAP>> = rrt.run(&START, &GOAL, &grid, &params);
+    let result: RRTResult<KdTree<2, 16>> = rrt.run(&START, &GOAL, &grid, &params);
 
     run_vis(&result, &GOAL, &grid);
 }
