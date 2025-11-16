@@ -1,9 +1,9 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use nalgebra as na;
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
-use rrt::ds::nn_index::kdtree::KdTree;
 use rrt::ds::nn_index::NNIndex;
+use rrt::ds::nn_index::kdtree::KdTree;
 use rrt::ds::point_list::PointList;
 
 use na::SVector;
@@ -29,11 +29,12 @@ fn run_insertion_bench<const DIMS: usize, const LEAF_CAP: usize>(
     rng: &mut StdRng,
     dist: &Uniform<f32>,
 ) {
-    for point_count in [256, 1024, 4096, 16384, 65536, 262144].iter() {
+    for point_count in [256, 1024, 4096, 16384, 65536].iter() {
         group.throughput(Throughput::Elements(*point_count as u64));
         let points = generate_points::<DIMS>(*point_count, dist, rng);
+
         group.bench_with_input(
-            BenchmarkId::new(format!("{}D_Leaf{}", DIMS, LEAF_CAP), point_count),
+            BenchmarkId::new(format!("Leaf{}", LEAF_CAP), point_count),
             &points,
             |b, p| {
                 b.iter(|| {
@@ -48,19 +49,24 @@ fn run_insertion_bench<const DIMS: usize, const LEAF_CAP: usize>(
 }
 
 fn bench_insertion(c: &mut Criterion) {
-    let mut group = c.benchmark_group("KDTree_Insertion");
     let mut rng = StdRng::seed_from_u64(10);
     let dist = Uniform::new(-1.0, 1.0);
 
-    run_insertion_bench::<2, 1>(&mut group, &mut rng, &dist);
-    run_insertion_bench::<2, 4>(&mut group, &mut rng, &dist);
-    run_insertion_bench::<2, 16>(&mut group, &mut rng, &dist);
-    run_insertion_bench::<2, 64>(&mut group, &mut rng, &dist);
+    {
+        let mut group_2d = c.benchmark_group("KDTree_Insert_2D");
+        run_insertion_bench::<2, 1>(&mut group_2d, &mut rng, &dist);
+        run_insertion_bench::<2, 4>(&mut group_2d, &mut rng, &dist);
+        run_insertion_bench::<2, 8>(&mut group_2d, &mut rng, &dist);
+        run_insertion_bench::<2, 16>(&mut group_2d, &mut rng, &dist);
+    }
 
-    run_insertion_bench::<5, 1>(&mut group, &mut rng, &dist);
-    run_insertion_bench::<5, 4>(&mut group, &mut rng, &dist);
-    run_insertion_bench::<5, 16>(&mut group, &mut rng, &dist);
-    run_insertion_bench::<5, 64>(&mut group, &mut rng, &dist);
+    {
+        let mut group_5d = c.benchmark_group("KDTree_Insert_5D");
+        run_insertion_bench::<5, 1>(&mut group_5d, &mut rng, &dist);
+        run_insertion_bench::<5, 4>(&mut group_5d, &mut rng, &dist);
+        run_insertion_bench::<5, 8>(&mut group_5d, &mut rng, &dist);
+        run_insertion_bench::<5, 16>(&mut group_5d, &mut rng, &dist);
+    }
 }
 
 fn run_lookup_bench<const DIMS: usize, const LEAF_CAP: usize>(
@@ -69,17 +75,19 @@ fn run_lookup_bench<const DIMS: usize, const LEAF_CAP: usize>(
     dist: &Uniform<f32>,
 ) {
     const QUERY_COUNT: usize = 256;
-    for point_count in [256, 1024, 4096, 16384, 65536, 262144].iter() {
+    for point_count in [256, 1024, 4096, 16384, 65536].iter() {
         group.throughput(Throughput::Elements(QUERY_COUNT as u64));
+
         let points = generate_points::<DIMS>(*point_count, dist, rng);
         let mut tree = KdTree::<DIMS, LEAF_CAP>::empty();
         for p in &points {
             tree.add_point(*p);
         }
+
         let queries = generate_points::<DIMS>(QUERY_COUNT, dist, rng);
 
         group.bench_with_input(
-            BenchmarkId::new(format!("{}D_Leaf{}", DIMS, LEAF_CAP), point_count),
+            BenchmarkId::new(format!("Leaf{}", LEAF_CAP), point_count),
             &queries,
             |b, q| {
                 b.iter(|| {
@@ -93,19 +101,24 @@ fn run_lookup_bench<const DIMS: usize, const LEAF_CAP: usize>(
 }
 
 fn bench_lookup(c: &mut Criterion) {
-    let mut group = c.benchmark_group("KDTree_Lookup");
     let mut rng = StdRng::seed_from_u64(10);
     let dist = Uniform::new(-1.0, 1.0);
 
-    run_lookup_bench::<2, 1>(&mut group, &mut rng, &dist);
-    run_lookup_bench::<2, 4>(&mut group, &mut rng, &dist);
-    run_lookup_bench::<2, 16>(&mut group, &mut rng, &dist);
-    run_lookup_bench::<2, 64>(&mut group, &mut rng, &dist);
+    {
+        let mut group_2d = c.benchmark_group("KDTree_Lookup_2D");
+        run_lookup_bench::<2, 1>(&mut group_2d, &mut rng, &dist);
+        run_lookup_bench::<2, 4>(&mut group_2d, &mut rng, &dist);
+        run_lookup_bench::<2, 8>(&mut group_2d, &mut rng, &dist);
+        run_lookup_bench::<2, 16>(&mut group_2d, &mut rng, &dist);
+    }
 
-    run_lookup_bench::<5, 1>(&mut group, &mut rng, &dist);
-    run_lookup_bench::<5, 4>(&mut group, &mut rng, &dist);
-    run_lookup_bench::<5, 16>(&mut group, &mut rng, &dist);
-    run_lookup_bench::<5, 64>(&mut group, &mut rng, &dist);
+    {
+        let mut group_5d = c.benchmark_group("KDTree_Lookup_5D");
+        run_lookup_bench::<5, 1>(&mut group_5d, &mut rng, &dist);
+        run_lookup_bench::<5, 4>(&mut group_5d, &mut rng, &dist);
+        run_lookup_bench::<5, 8>(&mut group_5d, &mut rng, &dist);
+        run_lookup_bench::<5, 16>(&mut group_5d, &mut rng, &dist);
+    }
 }
 
 criterion_group!(benches, bench_insertion, bench_lookup);
