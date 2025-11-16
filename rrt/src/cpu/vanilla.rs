@@ -3,25 +3,26 @@ use nalgebra as na;
 use rand::Rng;
 
 use super::alg::raytrace;
+use crate::cpu::ds::kdtree::KdTree;
 use crate::shared::alg::dfs;
 use crate::shared::ds::grid::OccupancyGrid;
-use crate::shared::ds::nn_index::NNIndex;
+use crate::shared::ds::point_list::PointList;
 use crate::{RRTAlgorithm, RRTParameters, RRTResult};
 
 pub struct VanillaRRT;
 
-impl<NN: NNIndex<2>> RRTAlgorithm<NN> for VanillaRRT {
+impl RRTAlgorithm<KdTree<2, 16>> for VanillaRRT {
     fn run(
         &self,
         start: &Vector2<f32>,
         goal: &Vector2<f32>,
         grid: &OccupancyGrid,
         params: &RRTParameters,
-    ) -> RRTResult<NN> {
-        let mut nn_index = NN::empty();
+    ) -> RRTResult<KdTree<2, 16>> {
+        let mut kd_tree = KdTree::empty();
 
         let start_idx = 0;
-        assert!(nn_index.add_point(*start));
+        assert!(kd_tree.add_point(*start));
 
         let mut tree: Vec<Vec<usize>> = vec![Vec::new(); params.num_points + 1];
         let mut found = false;
@@ -29,14 +30,14 @@ impl<NN: NNIndex<2>> RRTAlgorithm<NN> for VanillaRRT {
 
         let mut rng = rand::thread_rng();
 
-        while nn_index.len() < params.num_points {
+        while kd_tree.len() < params.num_points {
             let mut conf = Vector2::<f32>::zeros();
             for i in 0..conf.len() {
                 conf[i] = rng.gen_range(params.min_bound[i]..=params.max_bound[i]);
             }
 
-            let nearest_idx = nn_index.closest_point(conf).unwrap();
-            let nearest = nn_index[nearest_idx];
+            let nearest_idx = kd_tree.closest_point(conf).unwrap();
+            let nearest = kd_tree[nearest_idx];
 
             let direction = (conf - nearest).normalize();
             let in_between = nearest + direction * params.move_dist;
@@ -49,10 +50,10 @@ impl<NN: NNIndex<2>> RRTAlgorithm<NN> for VanillaRRT {
                 continue;
             }
 
-            if !nn_index.add_point(in_between) {
+            if !kd_tree.add_point(in_between) {
                 continue;
             }
-            let new_idx = nn_index.len() - 1;
+            let new_idx = kd_tree.len() - 1;
 
             tree[nearest_idx].push(new_idx);
 
@@ -72,7 +73,7 @@ impl<NN: NNIndex<2>> RRTAlgorithm<NN> for VanillaRRT {
         };
 
         RRTResult {
-            points: nn_index,
+            points: kd_tree,
             tree,
             path,
         }

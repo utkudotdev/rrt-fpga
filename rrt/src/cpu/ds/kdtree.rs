@@ -3,7 +3,6 @@ use std::ops::Index;
 use na::SVector;
 use nalgebra as na;
 
-use crate::shared::ds::nn_index::NNIndex;
 use crate::shared::ds::point_list::PointList;
 
 const MIN_RADIUS_SQ: f32 = 1e-6 * 1e-6;
@@ -190,8 +189,8 @@ impl<const DIMS: usize, const LEAF_CAP: usize> PointList<DIMS> for KdTree<DIMS, 
     }
 }
 
-impl<const DIMS: usize, const LEAF_CAP: usize> NNIndex<DIMS> for KdTree<DIMS, LEAF_CAP> {
-    fn closest_point(&self, point: SVector<f32, DIMS>) -> Option<usize> {
+impl<const DIMS: usize, const LEAF_CAP: usize> KdTree<DIMS, LEAF_CAP> {
+    pub fn closest_point(&self, point: SVector<f32, DIMS>) -> Option<usize> {
         if self.points.is_empty() {
             return None;
         }
