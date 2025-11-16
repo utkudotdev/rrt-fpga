@@ -1,12 +1,11 @@
 use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
+use na::SVector;
 use nalgebra as na;
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
 use rrt::cpu::ds::kdtree::KdTree;
 use rrt::shared::ds::nn_index::NNIndex;
 use rrt::shared::ds::point_list::PointList;
-
-use na::SVector;
 
 fn generate_points<const DIMS: usize>(
     count: usize,

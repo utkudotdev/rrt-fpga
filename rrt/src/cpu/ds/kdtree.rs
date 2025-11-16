@@ -1,8 +1,10 @@
-use crate::shared::ds::nn_index::NNIndex;
-use crate::shared::ds::point_list::PointList;
+use std::ops::Index;
+
 use na::SVector;
 use nalgebra as na;
-use std::ops::Index;
+
+use crate::shared::ds::nn_index::NNIndex;
+use crate::shared::ds::point_list::PointList;
 
 const MIN_RADIUS_SQ: f32 = 1e-6 * 1e-6;
 
@@ -203,8 +205,9 @@ impl<const DIMS: usize, const LEAF_CAP: usize> NNIndex<DIMS> for KdTree<DIMS, LE
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rand::prelude::*;
+
+    use super::*;
 
     fn test_random_inserts_and_queries<const LEAF_CAP: usize>(
         count_points: usize,

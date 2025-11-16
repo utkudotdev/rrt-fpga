@@ -1,5 +1,6 @@
 {
     "[rust]": {
         "editor.inlayHints.enabled": "offUnlessPressed"
-    }
+    },
+    "rust-analyzer.rustfmt.extraArgs": ["+nightly"]
 }

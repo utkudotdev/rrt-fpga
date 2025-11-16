@@ -1,5 +1,6 @@
-use na::SVector;
 use std::ops::Index;
+
+use na::SVector;
 
 pub trait PointList<const DIMS: usize>: Index<usize, Output = SVector<f32, DIMS>> {
     fn empty() -> Self

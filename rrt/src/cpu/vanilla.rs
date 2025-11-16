@@ -1,11 +1,12 @@
+use na::Vector2;
+use nalgebra as na;
+use rand::Rng;
+
 use super::alg::raytrace;
 use crate::shared::alg::dfs;
 use crate::shared::ds::grid::OccupancyGrid;
 use crate::shared::ds::nn_index::NNIndex;
 use crate::{RRTAlgorithm, RRTParameters, RRTResult};
-use na::Vector2;
-use nalgebra as na;
-use rand::Rng;
 
 pub struct VanillaRRT;
 
