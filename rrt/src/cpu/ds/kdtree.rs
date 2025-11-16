@@ -1,11 +1,8 @@
-use std::ops::Index;
-
+use crate::shared::ds::nn_index::NNIndex;
+use crate::shared::ds::point_list::PointList;
 use na::SVector;
 use nalgebra as na;
-
-use crate::ds::point_list::PointList;
-
-use super::NNIndex;
+use std::ops::Index;
 
 const MIN_RADIUS_SQ: f32 = 1e-6 * 1e-6;
 

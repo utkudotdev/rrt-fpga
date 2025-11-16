@@ -1,12 +1,11 @@
-pub mod alg;
-pub mod ds;
-pub mod vanilla;
+pub mod cpu;
+pub mod shared;
 
 extern crate nalgebra as na;
-use ds::grid::OccupancyGrid;
-use na::Vector2;
 
-use crate::ds::point_list::PointList;
+use crate::shared::ds::point_list::PointList;
+use na::Vector2;
+use shared::ds::grid::OccupancyGrid;
 
 pub struct RRTResult<PL: PointList<2>> {
     pub points: PL,

@@ -1,8 +1,8 @@
 use nalgebra::Vector2;
-use rrt::ds::grid::OccupancyGrid;
-use rrt::ds::nn_index::kdtree::KdTree;
-use rrt::ds::point_list::PointList;
-use rrt::vanilla::VanillaRRT;
+use rrt::cpu::ds::kdtree::KdTree;
+use rrt::cpu::vanilla::VanillaRRT;
+use rrt::shared::ds::grid::OccupancyGrid;
+use rrt::shared::ds::point_list::PointList;
 use rrt::{RRTAlgorithm, RRTParameters, RRTResult};
 use sfml::graphics::{
     CircleShape, Color, FloatRect, PrimitiveType, RectangleShape, RenderTarget, RenderWindow,

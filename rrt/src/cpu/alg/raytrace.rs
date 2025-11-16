@@ -1,4 +1,4 @@
-use crate::ds::grid::OccupancyGrid;
+use crate::shared::ds::grid::OccupancyGrid;
 use na::Vector2;
 
 pub fn is_segment_occupied(a: &Vector2<f32>, b: &Vector2<f32>, grid: &OccupancyGrid) -> bool {
@@ -34,7 +34,7 @@ pub fn is_segment_occupied(a: &Vector2<f32>, b: &Vector2<f32>, grid: &OccupancyG
         }
 
         assert!(t >= 0.0);
-        assert!(t <= 1.0001, "t was {} which is greater than 1.0", t);
+        assert!(t <= 1.0);
         assert!(remaining_x_t >= 0.0);
         assert!(remaining_y_t >= 0.0);
         // but not necessarily <= 1.0
@@ -46,7 +46,7 @@ pub fn is_segment_occupied(a: &Vector2<f32>, b: &Vector2<f32>, grid: &OccupancyG
             // we'll reach the end strictly before any intersection
             // means the end is in the current cell which we've already checked, so exit
             break;
-        } else if (remaining_x_t - remaining_y_t).abs() < 1e-6 {
+        } else if remaining_x_t == remaining_y_t {
             // extremely rare
             // in this case, we can basically choose our path
             // but we want to avoid "leaking" through so we shouldn't do +1 on each
@@ -74,8 +74,7 @@ pub fn is_segment_occupied(a: &Vector2<f32>, b: &Vector2<f32>, grid: &OccupancyG
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ds::grid::OccupancyGrid;
-    use na::{Vector2, vector};
+    use na::vector;
 
     #[test]
     fn test_within_one_cell() {

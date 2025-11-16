@@ -8,6 +8,7 @@ pub fn dfs(
     if start_idx == end_idx {
         return true;
     }
+
     if let Some(children) = tree.get(start_idx) {
         for &child_idx in children {
             if dfs(tree, child_idx, end_idx, path) {
@@ -15,6 +16,7 @@ pub fn dfs(
             }
         }
     }
+
     path.pop();
     false
 }
