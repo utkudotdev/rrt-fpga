@@ -3,8 +3,7 @@ use na::SVector;
 use nalgebra as na;
 use rand::distributions::{Distribution, Uniform};
 use rand::prelude::*;
-use rrt::cpu::ds::kdtree::KdTree;
-use rrt::shared::ds::point_list::PointList;
+use rrt::cpu::kdtree::KdTree;
 
 fn generate_points<const DIMS: usize>(
     count: usize,
