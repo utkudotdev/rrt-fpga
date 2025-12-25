@@ -1,17 +1,22 @@
 pub mod cpu;
-pub mod fl_model;
 pub mod shared;
 
 extern crate nalgebra as na;
 
 use na::Vector2;
-use shared::ds::grid::OccupancyGrid;
+use shared::grid::OccupancyGrid;
 
-use crate::shared::ds::point_list::PointList;
+/// Result of running RRT.
+pub struct RRTResult {
+    /// A list of points in the tree.
+    pub points: Vec<Vector2<f32>>,
 
-pub struct RRTResult<PL: PointList<2>> {
-    pub points: PL,
+    // The actual structure of the tree. If `tree[i][k] = j`, there is an edge from `points[i]` to
+    // `points[j]`. Guaranteed to always be a tree.
     pub tree: Vec<Vec<usize>>,
+
+    /// The path from `start` to `goal`, if found. Each element of `path` is an index into
+    /// `points`.
     pub path: Option<Vec<usize>>,
 }
 
@@ -34,7 +39,7 @@ pub struct RRTParameters {
     pub sq_dist_tol: f32,
 }
 
-pub trait RRTAlgorithm<PL: PointList<2>> {
+pub trait RRTAlgorithm {
     /// Runs the `RRTAlgorithm` and returns an `RRTResult` describing the path
     /// found by the algorithm.
     ///
@@ -52,5 +57,5 @@ pub trait RRTAlgorithm<PL: PointList<2>> {
         goal: &Vector2<f32>,
         grid: &OccupancyGrid,
         params: &RRTParameters,
-    ) -> RRTResult<PL>;
+    ) -> RRTResult;
 }

@@ -3,8 +3,6 @@ use std::ops::Index;
 use na::SVector;
 use nalgebra as na;
 
-use crate::shared::ds::point_list::PointList;
-
 const MIN_RADIUS_SQ: f32 = 1e-6 * 1e-6;
 
 enum Node<const LEAF_CAP: usize> {
@@ -163,8 +161,8 @@ impl<const DIMS: usize, const LEAF_CAP: usize> Index<usize> for KdTree<DIMS, LEA
     }
 }
 
-impl<const DIMS: usize, const LEAF_CAP: usize> PointList<DIMS> for KdTree<DIMS, LEAF_CAP> {
-    fn empty() -> Self {
+impl<const DIMS: usize, const LEAF_CAP: usize> KdTree<DIMS, LEAF_CAP> {
+    pub fn empty() -> Self {
         Self {
             points: Vec::new(),
             root: Node::Leaf {
@@ -174,7 +172,7 @@ impl<const DIMS: usize, const LEAF_CAP: usize> PointList<DIMS> for KdTree<DIMS, 
         }
     }
 
-    fn add_point(&mut self, point: SVector<f32, DIMS>) -> bool {
+    pub fn add_point(&mut self, point: SVector<f32, DIMS>) -> bool {
         let point_idx = self.points.len();
         self.points.push(point);
         if !Self::add_point_to_node(&self.points, point_idx, &mut self.root) {
@@ -184,12 +182,10 @@ impl<const DIMS: usize, const LEAF_CAP: usize> PointList<DIMS> for KdTree<DIMS, 
         true
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.points.len()
     }
-}
 
-impl<const DIMS: usize, const LEAF_CAP: usize> KdTree<DIMS, LEAF_CAP> {
     pub fn closest_point(&self, point: SVector<f32, DIMS>) -> Option<usize> {
         if self.points.is_empty() {
             return None;

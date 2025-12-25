@@ -1,8 +1,6 @@
 use nalgebra::Vector2;
-use rrt::cpu::ds::kdtree::KdTree;
 use rrt::cpu::vanilla::VanillaRRT;
-use rrt::shared::ds::grid::OccupancyGrid;
-use rrt::shared::ds::point_list::PointList;
+use rrt::shared::grid::OccupancyGrid;
 use rrt::{RRTAlgorithm, RRTParameters, RRTResult};
 use sfml::graphics::{
     CircleShape, Color, FloatRect, PrimitiveType, RectangleShape, RenderTarget, RenderWindow,
@@ -21,11 +19,7 @@ const SQ_GOAL_TOL: f32 = 0.0001;
 const GRID_RESOLUTION: f32 = 0.01;
 const CIRCLE_RADIUS: f32 = 5.0;
 
-fn run_vis<PL: PointList<2>>(
-    result: &RRTResult<PL>,
-    real_goal: &Vector2<f32>,
-    grid: &OccupancyGrid,
-) {
+fn run_vis(result: &RRTResult, real_goal: &Vector2<f32>, grid: &OccupancyGrid) {
     let mut window = RenderWindow::new(
         (800, 600),
         "RRT Visualization",
@@ -177,7 +171,7 @@ fn main() {
         sq_dist_tol: SQ_GOAL_TOL,
     };
 
-    let result: RRTResult<KdTree<2, 16>> = rrt.run(&START, &GOAL, &grid, &params);
+    let result: RRTResult = rrt.run(&START, &GOAL, &grid, &params);
 
     run_vis(&result, &GOAL, &grid);
 }

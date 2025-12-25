@@ -1,6 +1,6 @@
 use na::Vector2;
 
-use crate::shared::ds::grid::OccupancyGrid;
+use crate::shared::grid::OccupancyGrid;
 
 pub fn is_segment_occupied(a: &Vector2<f32>, b: &Vector2<f32>, grid: &OccupancyGrid) -> bool {
     let (mut cell_x, mut cell_y) = grid.position_to_cell(a);

@@ -1,3 +1,3 @@
-pub mod alg;
-pub mod ds;
+mod kdtree;
+mod raytrace;
 pub mod vanilla;

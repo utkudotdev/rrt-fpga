@@ -2,24 +2,23 @@ use na::Vector2;
 use nalgebra as na;
 use rand::Rng;
 
-use super::alg::raytrace;
-use crate::cpu::ds::kdtree::KdTree;
-use crate::shared::alg::dfs;
-use crate::shared::ds::grid::OccupancyGrid;
-use crate::shared::ds::point_list::PointList;
+use super::raytrace;
+use crate::cpu::kdtree::KdTree;
+use crate::shared::dfs;
+use crate::shared::grid::OccupancyGrid;
 use crate::{RRTAlgorithm, RRTParameters, RRTResult};
 
 pub struct VanillaRRT;
 
-impl RRTAlgorithm<KdTree<2, 16>> for VanillaRRT {
+impl RRTAlgorithm for VanillaRRT {
     fn run(
         &self,
         start: &Vector2<f32>,
         goal: &Vector2<f32>,
         grid: &OccupancyGrid,
         params: &RRTParameters,
-    ) -> RRTResult<KdTree<2, 16>> {
-        let mut kd_tree = KdTree::empty();
+    ) -> RRTResult {
+        let mut kd_tree = KdTree::<2, 16>::empty();
 
         let start_idx = 0;
         assert!(kd_tree.add_point(*start));
@@ -72,10 +71,14 @@ impl RRTAlgorithm<KdTree<2, 16>> for VanillaRRT {
             None
         };
 
-        RRTResult {
-            points: kd_tree,
-            tree,
-            path,
-        }
+        let points = {
+            let mut v = Vec::with_capacity(kd_tree.len());
+            for i in 0..kd_tree.len() {
+                v.push(kd_tree[i]);
+            }
+            v
+        };
+
+        RRTResult { points, tree, path }
     }
 }
