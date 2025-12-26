@@ -6,7 +6,7 @@ from cocotb_tools.runner import get_runner
 
 def gen_test_runner(src: str, hdl_toplevel: str, module_name: str):
     def test_runner():
-        sim = os.getenv("SIM", "icarus")
+        sim = os.getenv("SIM", "verilator")
 
         proj_path = Path(__file__).resolve().parent.parent
 
