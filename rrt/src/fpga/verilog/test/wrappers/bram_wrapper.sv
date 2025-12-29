@@ -17,17 +17,17 @@ module bram_wrapper #(
         .clk(bus_clk)
     );
 
-    always_comb begin
-        bus.addr = bus_addr;
-        bus_r_data = bus.r_data;
-        bus.w_data = bus_w_data;
-        bus.we = bus_we;
-    end
-
     bram #(
         .ADDR_WIDTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH)
     ) bram_inst (
         .bus(bus) 
     );
+
+    always_comb begin
+        bus.addr = bus_addr;
+        bus_r_data = bus.r_data;
+        bus.w_data = bus_w_data;
+        bus.we = bus_we;
+    end
 endmodule
