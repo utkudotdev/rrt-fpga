@@ -14,6 +14,10 @@ module occupancy_grid #(
     input logic [GRID_WIDTH_LOG2-1:0] cell_x_in,
     input logic [GRID_HEIGHT_LOG2-1:0] cell_y_in,
 
+    input logic vld_in,
+    output logic vld_out,
+    output logic rdy,
+
     input logic we,
     input logic w_occupied,
     output logic r_occupied,
@@ -58,15 +62,28 @@ module occupancy_grid #(
             req_bit_off_reg <= '0;
             w_occupied_reg <= '0;
             we_reg <= '0;
+            vld_out <= '0;
+            rdy <= '1;
         end else begin
             case (state)
                 START_READ: begin
-                    mem.addr <= req_word_addr;
-                    mem.we <= '0;
-                    we_reg <= we;
-                    req_bit_off_reg <= req_bit_off;
-                    w_occupied_reg <= w_occupied;
-                    state <= WAIT_READ;
+                    if (vld_in) begin
+                        mem.addr <= req_word_addr;
+                        mem.we <= '0;
+
+                        we_reg <= we;
+                        req_bit_off_reg <= req_bit_off;
+                        w_occupied_reg <= w_occupied;
+
+                        vld_out <= '0;
+                        rdy <= '0;
+
+                        state <= WAIT_READ;
+                    end else begin
+                        rdy <= '1;
+
+                        state <= START_READ;
+                    end
                 end
                 WAIT_READ: begin
                     // We have to wait one cycle for the read data to actually become available.
@@ -82,11 +99,13 @@ module occupancy_grid #(
                         mem.w_data <= mem.r_data | (DATA_WIDTH'(1) << req_bit_off_reg);
                     else
                         mem.w_data <= mem.r_data & ~(DATA_WIDTH'(1) << req_bit_off_reg);
-                        
+
                     state <= START_READ;
                 end
                 FINISH_READ: begin
                     r_occupied <= mem.r_data[req_bit_off_reg];
+
+                    vld_out <= '1;
 
                     state <= START_READ;
                 end
