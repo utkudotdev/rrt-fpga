@@ -9,6 +9,7 @@ module occupancy_grid #(
     parameter GRID_HEIGHT_LOG2
 ) (
     // Use memory clock
+    input logic clk,
     input logic rst_n,
 
     input logic [GRID_WIDTH_LOG2-1:0] cell_x_in,
@@ -24,6 +25,15 @@ module occupancy_grid #(
 
     memory_bus.client mem
 );
+    function automatic void point_to_cell(
+        input point p,
+        output logic [GRID_WIDTH_LOG2-1:0] cx,
+        output logic [GRID_HEIGHT_LOG2-1:0] cy
+    );
+        cx = p.x[31 -: GRID_WIDTH_LOG2];
+        cy = p.y[31 -: GRID_HEIGHT_LOG2];
+    endfunction
+
     localparam DATA_WIDTH = mem.DATA_WIDTH;
     localparam ADDR_WIDTH = mem.ADDR_WIDTH;
     localparam DATA_WIDTH_LOG2 = $clog2(DATA_WIDTH);
@@ -53,7 +63,7 @@ module occupancy_grid #(
     state_t state;
 
     // TODO: I think the latency here can be lower?
-    always_ff @(posedge mem.clk) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             state <= START_READ;
             mem.we <= '0;

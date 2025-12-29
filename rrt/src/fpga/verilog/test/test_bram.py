@@ -11,9 +11,9 @@ DATA_WIDTH = 8
 async def generate_clock(dut):
     """Generate clock pulses."""
     while True:
-        dut.bus_clk.value = 0
+        dut.clk.value = 0
         await Timer(1, unit="ns")
-        dut.bus_clk.value = 1
+        dut.clk.value = 1
         await Timer(1, unit="ns")
 
 
@@ -22,7 +22,7 @@ async def test_read_write(dut):
     """Test basic read/write functionality."""
     cocotb.start_soon(generate_clock(dut))
 
-    await FallingEdge(dut.bus_clk)
+    await FallingEdge(dut.clk)
 
     # Write 0x42 to address 0x01
     dut.bus_addr.value = 0x01
@@ -30,11 +30,11 @@ async def test_read_write(dut):
     dut.bus_we.value = True
 
     # Wait for value to be written
-    await FallingEdge(dut.bus_clk)
+    await FallingEdge(dut.clk)
     dut.bus_we.value = False
 
     # Read back (address is still 0x01)
-    await FallingEdge(dut.bus_clk)
+    await FallingEdge(dut.clk)
 
     assert dut.bus_r_data.value == 0x42, f"Expected 0x42, got {dut.bus_r_data.value}"
 
@@ -46,7 +46,7 @@ async def test_multiple_locations(dut):
 
     data_dict = {}
 
-    await FallingEdge(dut.bus_clk)
+    await FallingEdge(dut.clk)
 
     for _ in range(20):
         addr = random.randint(0, (1 << ADDR_WIDTH) - 1)
@@ -57,14 +57,14 @@ async def test_multiple_locations(dut):
         dut.bus_addr.value = addr
         dut.bus_w_data.value = data
         dut.bus_we.value = True
-        await FallingEdge(dut.bus_clk)
+        await FallingEdge(dut.clk)
 
     dut.bus_we.value = False
 
     for addr, expected_data in data_dict.items():
         dut.bus_addr.value = addr
 
-        await FallingEdge(dut.bus_clk)
+        await FallingEdge(dut.clk)
 
         assert (
             dut.bus_r_data.value == expected_data
@@ -80,7 +80,7 @@ async def test_simultaneous_read_write(dut):
     """
     cocotb.start_soon(generate_clock(dut))
 
-    await FallingEdge(dut.bus_clk)
+    await FallingEdge(dut.clk)
 
     addr = 0x10
     val1 = 0xAA
@@ -90,7 +90,7 @@ async def test_simultaneous_read_write(dut):
     dut.bus_addr.value = addr
     dut.bus_w_data.value = val1
     dut.bus_we.value = True
-    await FallingEdge(dut.bus_clk)
+    await FallingEdge(dut.clk)
 
     # 2. Setup Simultaneous Write (val2) and Read
     # We are currently at FallingEdge.
@@ -98,7 +98,7 @@ async def test_simultaneous_read_write(dut):
     dut.bus_w_data.value = val2
 
     # Wait for the clock edge where both read and write happen
-    await FallingEdge(dut.bus_clk)
+    await FallingEdge(dut.clk)
 
     # The read output (r_data) should reflect the value BEFORE the write (val1)
     # because of non-blocking assignment order in RTL.
@@ -109,7 +109,7 @@ async def test_simultaneous_read_write(dut):
 
     # 3. Verify that the write actually happened
     dut.bus_we.value = False
-    await FallingEdge(dut.bus_clk)  # One more cycle to read the NEW value
+    await FallingEdge(dut.clk)  # One more cycle to read the NEW value
 
     read_val_new = dut.bus_r_data.value
     assert (

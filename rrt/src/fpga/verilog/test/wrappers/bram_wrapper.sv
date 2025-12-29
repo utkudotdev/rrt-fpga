@@ -4,7 +4,7 @@ module bram_wrapper #(
     parameter ADDR_WIDTH,
     parameter DATA_WIDTH
 ) (
-    input logic bus_clk,
+    input logic clk,
     input logic [ADDR_WIDTH-1:0] bus_addr,
     output logic [DATA_WIDTH-1:0] bus_r_data,
     input logic [DATA_WIDTH-1:0] bus_w_data,
@@ -14,14 +14,14 @@ module bram_wrapper #(
         .ADDR_WIDTH(ADDR_WIDTH), 
         .DATA_WIDTH(DATA_WIDTH)
     ) bus (
-        .clk(bus_clk)
     );
 
     bram #(
         .ADDR_WIDTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH)
     ) bram_inst (
-        .bus(bus) 
+        .clk(clk),
+        .bus(bus.memory) 
     );
 
     always_comb begin
