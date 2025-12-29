@@ -1,7 +1,7 @@
 `ifndef OCCUPANCY_GRID_SV
 `define OCCUPANCY_GRID_SV
 
-`include "mem.sv"
+`include "membus.sv"
 `include "point.sv"
 
 module occupancy_grid #(
@@ -20,8 +20,8 @@ module occupancy_grid #(
 
     memory_bus.client mem
 );
-    localparam DATA_WIDTH = $bits(mem.r_data);
-    localparam ADDR_WIDTH = $bits(mem.addr);
+    localparam DATA_WIDTH = mem.DATA_WIDTH;
+    localparam ADDR_WIDTH = mem.ADDR_WIDTH;
     localparam DATA_WIDTH_LOG2 = $clog2(DATA_WIDTH);
     
     // Address calculation
@@ -32,8 +32,8 @@ module occupancy_grid #(
     logic [DATA_WIDTH_LOG2-1:0] req_bit_off;
     
     // Synthesis should handle optimization for power-of-2 widths
-    assign req_word_addr = linear_addr / DATA_WIDTH;
-    assign req_bit_off = linear_addr % DATA_WIDTH;
+    assign req_word_addr = ADDR_WIDTH'(linear_addr / DATA_WIDTH);
+    assign req_bit_off = DATA_WIDTH_LOG2'(linear_addr % DATA_WIDTH);
 
     logic [DATA_WIDTH_LOG2-1:0] req_bit_off_reg;
     logic w_occupied_reg;
@@ -51,7 +51,7 @@ module occupancy_grid #(
     // TODO: I think the latency here can be lower?
     always_ff @(posedge mem.clk) begin
         if (!rst_n) begin
-            state <= START;
+            state <= START_READ;
             mem.we <= '0;
             mem.addr <= '0;
             mem.w_data <= '0;
@@ -60,7 +60,7 @@ module occupancy_grid #(
             we_reg <= '0;
         end else begin
             case (state)
-                START: begin
+                START_READ: begin
                     mem.addr <= req_word_addr;
                     mem.we <= '0;
                     we_reg <= we;
@@ -83,12 +83,12 @@ module occupancy_grid #(
                     else
                         mem.w_data <= mem.r_data & ~(DATA_WIDTH'(1) << req_bit_off_reg);
                         
-                    state <= START;
+                    state <= START_READ;
                 end
                 FINISH_READ: begin
                     r_occupied <= mem.r_data[req_bit_off_reg];
 
-                    state <= START;
+                    state <= START_READ;
                 end
             endcase
         end
