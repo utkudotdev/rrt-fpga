@@ -3,6 +3,7 @@
 
 `include "membus.sv"
 `include "point.sv"
+`include "cell_access_bus.sv"
 
 module occupancy_grid #(
     parameter GRID_WIDTH_LOG2,
@@ -12,17 +13,7 @@ module occupancy_grid #(
     input logic clk,
     input logic rst_n,
 
-    // TODO: We should wrap these in an interface.
-    input logic [GRID_WIDTH_LOG2-1:0] cell_x_in,
-    input logic [GRID_HEIGHT_LOG2-1:0] cell_y_in,
-
-    input logic vld_in,
-    output logic vld_out,
-    output logic rdy,
-
-    input logic we,
-    input logic w_occupied,
-    output logic r_occupied,
+    cell_access_bus.server cell_bus,
 
     memory_bus.client mem
 );
@@ -41,7 +32,7 @@ module occupancy_grid #(
     
     // Address calculation
     logic [GRID_WIDTH_LOG2 + GRID_HEIGHT_LOG2 - 1:0] linear_addr;
-    assign linear_addr = {cell_y_in, cell_x_in};
+    assign linear_addr = {cell_bus.cell_y, cell_bus.cell_x};
 
     logic [ADDR_WIDTH-1:0] req_word_addr;
     logic [DATA_WIDTH_LOG2-1:0] req_bit_off;
@@ -73,25 +64,25 @@ module occupancy_grid #(
             req_bit_off_reg <= '0;
             w_occupied_reg <= '0;
             we_reg <= '0;
-            vld_out <= '0;
-            rdy <= '1;
+            cell_bus.vld_out <= '0;
+            cell_bus.rdy <= '1;
         end else begin
             case (state)
                 START_READ: begin
-                    if (vld_in) begin
+                    if (cell_bus.vld_in) begin
                         mem.addr <= req_word_addr;
                         mem.we <= '0;
 
-                        we_reg <= we;
+                        we_reg <= cell_bus.we;
                         req_bit_off_reg <= req_bit_off;
-                        w_occupied_reg <= w_occupied;
+                        w_occupied_reg <= cell_bus.w_occupied;
 
-                        vld_out <= '0;
-                        rdy <= '0;
+                        cell_bus.vld_out <= '0;
+                        cell_bus.rdy <= '0;
 
                         state <= WAIT_READ;
                     end else begin
-                        rdy <= '1;
+                        cell_bus.rdy <= '1;
 
                         state <= START_READ;
                     end
@@ -114,9 +105,9 @@ module occupancy_grid #(
                     state <= START_READ;
                 end
                 FINISH_READ: begin
-                    r_occupied <= mem.r_data[req_bit_off_reg];
+                    cell_bus.r_occupied <= mem.r_data[req_bit_off_reg];
 
-                    vld_out <= '1;
+                    cell_bus.vld_out <= '1;
 
                     state <= START_READ;
                 end
