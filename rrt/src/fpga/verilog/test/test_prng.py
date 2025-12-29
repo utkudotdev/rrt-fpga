@@ -50,7 +50,10 @@ async def test_en_high_changes(dut):
 
     for _ in range(10):
         await FallingEdge(dut.clk)
+
         curr_val = dut.out.value
+        cocotb.log.info("PRNG current value is %d", curr_val)
+
         assert curr_val != last_val
         last_val = curr_val
 
@@ -74,7 +77,7 @@ async def test_reset_seed(dut):
     assert dut.out.value == 10
 
 
-test_prng = gen_test_runner("prng.sv", "prng64", "test_prng")
+test_prng = gen_test_runner("src/prng.sv", "test_prng", "prng64")
 
 if __name__ == "__main__":
     test_prng()
