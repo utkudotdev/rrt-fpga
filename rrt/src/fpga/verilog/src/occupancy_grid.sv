@@ -12,6 +12,7 @@ module occupancy_grid #(
     input logic clk,
     input logic rst_n,
 
+    // TODO: We should wrap these in an interface.
     input logic [GRID_WIDTH_LOG2-1:0] cell_x_in,
     input logic [GRID_HEIGHT_LOG2-1:0] cell_y_in,
 
