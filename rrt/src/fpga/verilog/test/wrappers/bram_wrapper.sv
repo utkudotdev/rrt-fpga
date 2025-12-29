@@ -5,10 +5,10 @@ module bram_wrapper #(
     parameter DATA_WIDTH
 ) (
     input logic clk,
-    input logic [ADDR_WIDTH-1:0] bus_addr,
-    output logic [DATA_WIDTH-1:0] bus_r_data,
-    input logic [DATA_WIDTH-1:0] bus_w_data,
-    input logic bus_we
+    input logic [ADDR_WIDTH-1:0] bus_address,
+    output logic [DATA_WIDTH-1:0] bus_read_data,
+    input logic [DATA_WIDTH-1:0] bus_write_data,
+    input logic bus_write_enable
 );
     memory_bus #(
         .ADDR_WIDTH(ADDR_WIDTH), 
@@ -25,9 +25,9 @@ module bram_wrapper #(
     );
 
     always_comb begin
-        bus.addr = bus_addr;
-        bus_r_data = bus.r_data;
-        bus.w_data = bus_w_data;
-        bus.we = bus_we;
+        bus.address = bus_address;
+        bus_read_data = bus.read_data;
+        bus.write_data = bus_write_data;
+        bus.write_enable = bus_write_enable;
     end
 endmodule

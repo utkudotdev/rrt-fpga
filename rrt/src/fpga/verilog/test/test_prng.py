@@ -20,7 +20,7 @@ async def test_en_low(dut):
     await FallingEdge(dut.clk)
     dut.rst_n.value = 0
     dut.seed.value = 123
-    dut.en.value = 0
+    dut.enable.value = 0
 
     await FallingEdge(dut.clk)
     dut.rst_n.value = 1
@@ -41,7 +41,7 @@ async def test_en_high_changes(dut):
     await FallingEdge(dut.clk)
     dut.rst_n.value = 0
     dut.seed.value = 123
-    dut.en.value = 1
+    dut.enable.value = 1
 
     await FallingEdge(dut.clk)
     dut.rst_n.value = 1
@@ -65,7 +65,7 @@ async def test_reset_seed(dut):
     await FallingEdge(dut.clk)
 
     dut.rst_n.value = 1
-    dut.en.value = 0
+    dut.enable.value = 0
     dut.seed.value = 10
 
     await FallingEdge(dut.clk)

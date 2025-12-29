@@ -1,14 +1,14 @@
 module prng64 (
     input wire clk,
     input wire rst_n,
-    input wire en,
+    input wire enable,
     input wire [63:0] seed,
     output logic [63:0] out
 );
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             out <= seed;
-        end else if (en) begin
+        end else if (enable) begin
             // Algorithm source: https://en.wikipedia.org/wiki/Xorshift#Example_implementation
             logic [63:0] x0;
             logic [63:0] x1;

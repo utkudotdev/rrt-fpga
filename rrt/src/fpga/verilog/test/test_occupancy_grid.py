@@ -21,57 +21,57 @@ async def generate_clock(dut):
 
 async def reset(dut):
     dut.rst_n.value = 0
-    dut.vld_in.value = 0
-    dut.we.value = 0
-    dut.cell_x_in.value = 0
-    dut.cell_y_in.value = 0
-    dut.w_occupied.value = 0
+    dut.input_valid.value = 0
+    dut.write_enable.value = 0
+    dut.cell_x.value = 0
+    dut.cell_y.value = 0
+    dut.write_occupied.value = 0
 
     await FallingEdge(dut.clk)
     dut.rst_n.value = 1
     await FallingEdge(dut.clk)
 
 
-async def wait_for_rdy(dut):
+async def wait_for_ready_for_input(dut):
     """Wait until the module is ready to accept a new input."""
-    while dut.rdy.value == 0:
+    while dut.ready_for_input.value == 0:
         await FallingEdge(dut.clk)
 
 
-async def wait_for_vld_out(dut):
+async def wait_for_output_valid(dut):
     """Wait until the module output is ready."""
-    while dut.vld_out.value == 0:
+    while dut.output_valid.value == 0:
         await FallingEdge(dut.clk)
 
 
 async def write_cell(dut, x, y, val):
-    await wait_for_rdy(dut)
+    await wait_for_ready_for_input(dut)
 
-    dut.cell_x_in.value = x
-    dut.cell_y_in.value = y
-    dut.w_occupied.value = val
-    dut.we.value = 1
-    dut.vld_in.value = 1
+    dut.cell_x.value = x
+    dut.cell_y.value = y
+    dut.write_occupied.value = val
+    dut.write_enable.value = 1
+    dut.input_valid.value = 1
 
     await FallingEdge(dut.clk)
-    dut.vld_in.value = 0
-    dut.we.value = 0
+    dut.input_valid.value = 0
+    dut.write_enable.value = 0
 
 
 async def read_cell(dut, x, y):
-    await wait_for_rdy(dut)
+    await wait_for_ready_for_input(dut)
 
-    dut.cell_x_in.value = x
-    dut.cell_y_in.value = y
-    dut.we.value = 0
-    dut.vld_in.value = 1
+    dut.cell_x.value = x
+    dut.cell_y.value = y
+    dut.write_enable.value = 0
+    dut.input_valid.value = 1
 
     await FallingEdge(dut.clk)
-    dut.vld_in.value = 0
+    dut.input_valid.value = 0
 
-    await wait_for_vld_out(dut)
+    await wait_for_output_valid(dut)
 
-    return dut.r_occupied.value
+    return dut.read_occupied.value
 
 
 @cocotb.test()

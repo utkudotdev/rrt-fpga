@@ -10,10 +10,10 @@ module bram #(
     logic [DATA_WIDTH-1:0] mem_array [0:(1'b1<<ADDR_WIDTH)-1];
 
     always_ff @(posedge clk) begin
-        if (bus.we) begin
-            mem_array[bus.addr] <= bus.w_data;
+        if (bus.write_enable) begin
+            mem_array[bus.address] <= bus.write_data;
         end
 
-        bus.r_data <= mem_array[bus.addr];
+        bus.read_data <= mem_array[bus.address];
     end
 endmodule

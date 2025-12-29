@@ -25,18 +25,20 @@ async def test_read_write(dut):
     await FallingEdge(dut.clk)
 
     # Write 0x42 to address 0x01
-    dut.bus_addr.value = 0x01
-    dut.bus_w_data.value = 0x42
-    dut.bus_we.value = True
+    dut.bus_address.value = 0x01
+    dut.bus_write_data.value = 0x42
+    dut.bus_write_enable.value = True
 
     # Wait for value to be written
     await FallingEdge(dut.clk)
-    dut.bus_we.value = False
+    dut.bus_write_enable.value = False
 
     # Read back (address is still 0x01)
     await FallingEdge(dut.clk)
 
-    assert dut.bus_r_data.value == 0x42, f"Expected 0x42, got {dut.bus_r_data.value}"
+    assert (
+        dut.bus_read_data.value == 0x42
+    ), f"Expected 0x42, got {dut.bus_read_data.value}"
 
 
 @cocotb.test()
@@ -49,69 +51,69 @@ async def test_multiple_locations(dut):
     await FallingEdge(dut.clk)
 
     for _ in range(20):
-        addr = random.randint(0, (1 << ADDR_WIDTH) - 1)
+        address = random.randint(0, (1 << ADDR_WIDTH) - 1)
         data = random.randint(0, (1 << DATA_WIDTH) - 1)
 
-        data_dict[addr] = data
+        data_dict[address] = data
 
-        dut.bus_addr.value = addr
-        dut.bus_w_data.value = data
-        dut.bus_we.value = True
+        dut.bus_address.value = address
+        dut.bus_write_data.value = data
+        dut.bus_write_enable.value = True
         await FallingEdge(dut.clk)
 
-    dut.bus_we.value = False
+    dut.bus_write_enable.value = False
 
-    for addr, expected_data in data_dict.items():
-        dut.bus_addr.value = addr
+    for address, expected_data in data_dict.items():
+        dut.bus_address.value = address
 
         await FallingEdge(dut.clk)
 
         assert (
-            dut.bus_r_data.value == expected_data
-        ), f"Addr {hex(addr)}: Expected {hex(expected_data)}, got {dut.bus_r_data.value}"
+            dut.bus_read_data.value == expected_data
+        ), f"Addr {hex(address)}: Expected {hex(expected_data)}, got {dut.bus_read_data.value}"
 
 
 @cocotb.test()
 async def test_simultaneous_read_write(dut):
     """
     Test simultaneous read and write (Read-During-Write).
-    Expectation: The read operation returns the OLD value at the address
+    Expectation: The read operation returns the OLD value at the addressess
     while the new value is being written (Read-Before-Write).
     """
     cocotb.start_soon(generate_clock(dut))
 
     await FallingEdge(dut.clk)
 
-    addr = 0x10
+    address = 0x10
     val1 = 0xAA
     val2 = 0xBB
 
     # 1. Initialize address with val1
-    dut.bus_addr.value = addr
-    dut.bus_w_data.value = val1
-    dut.bus_we.value = True
+    dut.bus_address.value = address
+    dut.bus_write_data.value = val1
+    dut.bus_write_enable.value = True
     await FallingEdge(dut.clk)
 
     # 2. Setup Simultaneous Write (val2) and Read
     # We are currently at FallingEdge.
-    # We keep we=1, addr=addr. Change w_data to val2.
-    dut.bus_w_data.value = val2
+    # We keep we=1, addr=addr. Change write_data to val2.
+    dut.bus_write_data.value = val2
 
     # Wait for the clock edge where both read and write happen
     await FallingEdge(dut.clk)
 
-    # The read output (r_data) should reflect the value BEFORE the write (val1)
+    # The read output (read_data) should reflect the value BEFORE the write (val1)
     # because of non-blocking assignment order in RTL.
-    read_val = dut.bus_r_data.value
+    read_val = dut.bus_read_data.value
     assert (
         read_val == val1
     ), f"Read-During-Write failed. Expected old value {hex(val1)}, got {read_val}. (New val was {hex(val2)})"
 
     # 3. Verify that the write actually happened
-    dut.bus_we.value = False
+    dut.bus_write_enable.value = False
     await FallingEdge(dut.clk)  # One more cycle to read the NEW value
 
-    read_val_new = dut.bus_r_data.value
+    read_val_new = dut.bus_read_data.value
     assert (
         read_val_new == val2
     ), f"Subsequent read failed. Expected new value {hex(val2)}, got {read_val_new}"

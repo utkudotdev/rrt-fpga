@@ -8,13 +8,13 @@ interface memory_bus #(
     parameter ADDR_WIDTH,
     parameter DATA_WIDTH
 );
-    logic [ADDR_WIDTH-1:0] addr;
-    logic [DATA_WIDTH-1:0] r_data;
-    logic [DATA_WIDTH-1:0] w_data;
-    logic we;
+    logic [ADDR_WIDTH-1:0] address;
+    logic [DATA_WIDTH-1:0] read_data;
+    logic [DATA_WIDTH-1:0] write_data;
+    logic write_enable;
 
-    modport memory (input addr, w_data, we, output r_data);
-    modport client (input r_data, output addr, w_data, we);
+    modport memory (input address, write_data, write_enable, output read_data);
+    modport client (input read_data, output address, write_data, write_enable);
 endinterface
 
 `endif

@@ -12,16 +12,16 @@ module occupancy_grid #(
     input logic clk,
     input logic rst_n,
 
-    input logic [GRID_WIDTH_LOG2-1:0] cell_x_in,
-    input logic [GRID_HEIGHT_LOG2-1:0] cell_y_in,
+    input logic [GRID_WIDTH_LOG2-1:0] cell_x,
+    input logic [GRID_HEIGHT_LOG2-1:0] cell_y,
 
-    input logic vld_in,
-    output logic vld_out,
-    output logic rdy,
+    input logic input_valid,
+    output logic output_valid,
+    output logic ready_for_input,
 
-    input logic we,
-    input logic w_occupied,
-    output logic r_occupied,
+    input logic write_enable,
+    input logic write_occupied,
+    output logic read_occupied,
 
     memory_bus.client mem
 );
@@ -39,19 +39,19 @@ module occupancy_grid #(
     localparam DATA_WIDTH_LOG2 = $clog2(DATA_WIDTH);
     
     // Address calculation
-    logic [GRID_WIDTH_LOG2 + GRID_HEIGHT_LOG2 - 1:0] linear_addr;
-    assign linear_addr = {cell_y_in, cell_x_in};
+    logic [GRID_WIDTH_LOG2 + GRID_HEIGHT_LOG2 - 1:0] linear_address;
+    assign linear_address = {cell_y, cell_x};
 
-    logic [ADDR_WIDTH-1:0] req_word_addr;
+    logic [ADDR_WIDTH-1:0] req_word_address;
     logic [DATA_WIDTH_LOG2-1:0] req_bit_off;
     
-    // Synthesis should handle optimization for power-of-2 widths
-    assign req_word_addr = ADDR_WIDTH'(linear_addr / DATA_WIDTH);
-    assign req_bit_off = DATA_WIDTH_LOG2'(linear_addr % DATA_WIDTH);
+    // Synthesis should handle optimization for powrite_enabler-of-2 widths
+    assign req_word_address = ADDR_WIDTH'(linear_address / DATA_WIDTH);
+    assign req_bit_off = DATA_WIDTH_LOG2'(linear_address % DATA_WIDTH);
 
     logic [DATA_WIDTH_LOG2-1:0] req_bit_off_reg;
-    logic w_occupied_reg;
-    logic we_reg;
+    logic write_occupied_reg;
+    logic write_enable_reg;
 
     typedef enum logic [1:0] {
         START_READ,
@@ -62,60 +62,60 @@ module occupancy_grid #(
 
     state_t state;
 
-    // TODO: I think the latency here can be lower?
+    // TODO: I think the latency here can be lowrite_enabler?
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             state <= START_READ;
-            mem.we <= '0;
-            mem.addr <= '0;
-            mem.w_data <= '0;
+            mem.write_enable <= '0;
+            mem.address <= '0;
+            mem.write_data <= '0;
             req_bit_off_reg <= '0;
-            w_occupied_reg <= '0;
-            we_reg <= '0;
-            vld_out <= '0;
-            rdy <= '1;
+            write_occupied_reg <= '0;
+            write_enable_reg <= '0;
+            output_valid <= '0;
+            ready_for_input <= '1;
         end else begin
             case (state)
                 START_READ: begin
-                    if (vld_in) begin
-                        mem.addr <= req_word_addr;
-                        mem.we <= '0;
+                    if (input_valid) begin
+                        mem.address <= req_word_address;
+                        mem.write_enable <= '0;
 
-                        we_reg <= we;
+                        write_enable_reg <= write_enable;
                         req_bit_off_reg <= req_bit_off;
-                        w_occupied_reg <= w_occupied;
+                        write_occupied_reg <= write_occupied;
 
-                        vld_out <= '0;
-                        rdy <= '0;
+                        output_valid <= '0;
+                        ready_for_input <= '0;
 
                         state <= WAIT_READ;
                     end else begin
-                        rdy <= '1;
+                        ready_for_input <= '1;
 
                         state <= START_READ;
                     end
                 end
                 WAIT_READ: begin
-                    // We have to wait one cycle for the read data to actually become available.
-                    if (we_reg)
+                    // write_enable have to wait one cycle for the read data to actually become available.
+                    if (write_enable_reg)
                         state <= WRITE_BACK;
                     else
                         state <= FINISH_READ;
                 end
                 WRITE_BACK: begin
-                    mem.we <= '1;
+                    mem.write_enable <= '1;
 
-                    if (w_occupied_reg)
-                        mem.w_data <= mem.r_data | (DATA_WIDTH'(1) << req_bit_off_reg);
+                    if (write_occupied_reg)
+                        mem.write_data <= mem.read_data | (DATA_WIDTH'(1) << req_bit_off_reg);
                     else
-                        mem.w_data <= mem.r_data & ~(DATA_WIDTH'(1) << req_bit_off_reg);
+                        mem.write_data <= mem.read_data & ~(DATA_WIDTH'(1) << req_bit_off_reg);
 
                     state <= START_READ;
                 end
                 FINISH_READ: begin
-                    r_occupied <= mem.r_data[req_bit_off_reg];
+                    read_occupied <= mem.read_data[req_bit_off_reg];
 
-                    vld_out <= '1;
+                    output_valid <= '1;
 
                     state <= START_READ;
                 end
