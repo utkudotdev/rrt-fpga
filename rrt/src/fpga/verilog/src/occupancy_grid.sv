@@ -125,4 +125,18 @@ module occupancy_grid #(
 
 endmodule
 
+module occupancy_grid_util #(
+    parameter GRID_WIDTH_LOG2,
+    parameter GRID_HEIGHT_LOG2
+) ();
+    function automatic void point_to_cell(
+        input point p,
+        output logic [GRID_WIDTH_LOG2-1:0] cx,
+        output logic [GRID_HEIGHT_LOG2-1:0] cy
+    );
+        cx = p.x[31 -: GRID_WIDTH_LOG2];
+        cy = p.y[31 -: GRID_HEIGHT_LOG2];
+    endfunction
+endmodule
+
 `endif
