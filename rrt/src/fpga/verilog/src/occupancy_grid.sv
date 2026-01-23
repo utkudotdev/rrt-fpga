@@ -25,15 +25,6 @@ module occupancy_grid #(
 
     memory_bus.client mem
 );
-    function automatic void point_to_cell(
-        input point_t p,
-        output logic [GRID_WIDTH_LOG2-1:0] cx,
-        output logic [GRID_HEIGHT_LOG2-1:0] cy
-    );
-        cx = p.x[31 -: GRID_WIDTH_LOG2];
-        cy = p.y[31 -: GRID_HEIGHT_LOG2];
-    endfunction
-
     localparam DATA_WIDTH = mem.DATA_WIDTH;
     localparam ADDR_WIDTH = mem.ADDR_WIDTH;
     localparam DATA_WIDTH_LOG2 = $clog2(DATA_WIDTH);
@@ -62,7 +53,7 @@ module occupancy_grid #(
 
     state_t state;
 
-    // TODO: I think the latency here can be lowrite_enabler?
+    // TODO: I think the latency here can be lower?
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             state <= START_READ;
