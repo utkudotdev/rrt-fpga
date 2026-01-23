@@ -12,8 +12,8 @@ module directed_energy_weapon #(
     input logic clk,
     input logic rst_n,
 
-    input point a,
-    input point b,
+    input point_t a,
+    input point_t b,
 
     output logic occupied,
 
@@ -45,39 +45,38 @@ module directed_energy_weapon #(
 
     state_t state;
 
+    point_diff_t delta;
+
     logic [GRID_WIDTH_LOG2-1:0] current_cell_x;
     logic [GRID_HEIGHT_LOG2-1:0] current_cell_y;
 
-    // Note that a and b must stay valid throughout the operation
-    // (POINT_BITS+1)-bit signed number to store difference of two points
-    // TODO: does this actually do what I want? or does it overflow
-    logic signed [POINT_BITS:0] delta_x;
-    logic signed [POINT_BITS:0] delta_y;
-    assign delta_x = b.x - a.x;
-    assign delta_y = b.y - a.y;
-
-    // TODO: will these need more space to prevent overflow?
-    // What about intermediate results
-    logic [POINT_BITS-1:0] next_x_intersection;
-    logic [POINT_BITS-1:0] next_y_intersection;
-
+    // Need to have one extra bit to prevent overflow
+    logic [GRID_WIDTH_LOG2:0] next_int_cell_x;
+    logic [GRID_HEIGHT_LOG2:0] next_int_cell_y;
+    point_t next_intersection;
+    point_diff_t next_int_delta;
+    
     logic next_x_beyond_end;
     logic next_y_beyond_end;
 
-    // TODO: this result or at least the intermediats probably need to be bloody massive,
-    // not sure about the right size yet.
-    logic signed [POINT_BITS:0] intersection_t_diff;
+    logic signed [POINT_MULT_BITS:0] intersection_t_diff;
 
     always_comb begin
-        next_x_intersection = (delta_x > 0 ? current_cell_x + 1 : current_cell_x) << GRID_CELL_WIDTH_LOG2;
-        next_y_intersection = (delta_y > 0 ? current_cell_y + 1 : current_cell_y) << GRID_CELL_HEIGHT_LOG2;
+        // Note that a and b must stay valid throughout the operation
+        delta = point_sub(b, a);
 
-        next_x_beyond_end = delta_x > 0 ? (next_x_intersection >= b.x) : (next_x_intersection <= b.x);
-        next_y_beyond_end = delta_y > 0 ? (next_y_intersection >= b.y) : (next_y_intersection <= b.y);
+        next_int_cell_x = delta.x > 0 ? current_cell_x + 1' : current_cell_x;
+        next_int_cell_y = delta.y > 0 ? current_cell_y + 1' : current_cell_y;
+
+        next_intersection.x = next_int_cell_x << GRID_CELL_WIDTH_LOG2;
+        next_intersection.y = next_int_cell_y << GRID_CELL_HEIGHT_LOG2;
+
+        next_x_beyond_end = delta.x > 0 ? (next_intersection.x >= b.x) : (next_intersection.x <= b.x);
+        next_y_beyond_end = delta.y > 0 ? (next_intersection.y >= b.y) : (next_intersection.y <= b.y);
 
         // We now need to compute whether we will arrive at the x or y intersection first.
         // Our line can be parameterized as f(t) = a + t * delta, where t: [0, 1].
-        // We want to find the t until next_x_intersection and next_y_intersection.
+        // We want to find the t until next_intersection.x and next_intersection.y.
         // next_int = a + t * delta --> t = (next_int - a) / delta
         //
         // That division is no good! But we don't need to know t exactly for x or y.
@@ -91,7 +90,10 @@ module directed_energy_weapon #(
         // 
         // So no division is required. We can get away with just DSP slices.
 
-        intersection_t_diff = (next_x_intersection - a.x) * delta_y - (next_y_intersection - a.y) * delta_x;
+        next_int_delta = point_sub(next_intersection, a);
+
+        intersection_t_diff = POINT_MULT_BITS'(next_int_delta.x) * POINT_MULT_BITS'(delta.y) 
+                            - POINT_MULT_BITS'(next_int_delta.y) * POINT_MULT_BITS'(delta.x);
     end
 
     always_ff @(posedge clk) begin
@@ -101,6 +103,7 @@ module directed_energy_weapon #(
             output_valid <= '0;
             current_cell_x <= '0;
             current_cell_y <= '0;
+            grid_input_valid <= '0;
         end else begin
             case (state)
                 IDLE: begin
@@ -133,16 +136,16 @@ module directed_energy_weapon #(
                             state <= IDLE;
                         end else begin
                             // We need to go to the next cell
-                            // TODO: delta_y = 0?
+                            // TODO: delta.y = 0 still works?
                             if (intersection_t_diff > 0)
-                                current_cell_y <= current_cell_y + (delta_y > 0 ? 1 : -1);
+                                current_cell_y <= current_cell_y + (delta.y > 0 ? 1 : -1);
                             else if (intersection_t_diff < 0)
-                                current_cell_x <= current_cell_x + (delta_x > 0 ? 1 : -1);
+                                current_cell_x <= current_cell_x + (delta.x > 0 ? 1 : -1);
                             else begin
                                 // rare case, t to x intersection == t to y intersection
                                 // TODO: this case actually sucks because we need to do another memory access
                                 // to figure out which path we need to take. for now I'm just gonna increment x
-                                current_cell_x <= current_cell_x + (delta_x > 0 ? 1 : -1);
+                                current_cell_x <= current_cell_x + (delta.x > 0 ? 1 : -1);
                             end
                         end
                     end

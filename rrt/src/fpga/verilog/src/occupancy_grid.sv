@@ -26,7 +26,7 @@ module occupancy_grid #(
     memory_bus.client mem
 );
     function automatic void point_to_cell(
-        input point p,
+        input point_t p,
         output logic [GRID_WIDTH_LOG2-1:0] cx,
         output logic [GRID_HEIGHT_LOG2-1:0] cy
     );
@@ -130,7 +130,7 @@ module occupancy_grid_util #(
     parameter GRID_HEIGHT_LOG2
 ) ();
     function automatic void point_to_cell(
-        input point p,
+        input point_t p,
         output logic [GRID_WIDTH_LOG2-1:0] cx,
         output logic [GRID_HEIGHT_LOG2-1:0] cy
     );
