@@ -16,7 +16,7 @@ typedef struct packed {
     logic signed [`POINT_BITS:0] y;
 } point_diff_t;
 
-function point_diff_t point_sub (input point_t a, b);
+function automatic point_diff_t point_sub (input point_t a, b);
 	begin
         point_sub.x = signed'({1'b0, a.x}) - signed'({1'b0, b.x});
         point_sub.y = signed'({1'b0, a.y}) - signed'({1'b0, b.y});

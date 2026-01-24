@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+from cocotb.triggers import Timer
 from cocotb_tools.runner import get_runner
 
 
@@ -24,3 +25,12 @@ def gen_test_runner(src: str, module_name: str, hdl_toplevel: str, parameters={}
         runner.test(hdl_toplevel=hdl_toplevel, test_module=module_name)
 
     return test_runner
+
+
+async def generate_clock(dut):
+    """Generate clock pulses."""
+    while True:
+        dut.clk.value = 0
+        await Timer(1, unit="ns")
+        dut.clk.value = 1
+        await Timer(1, unit="ns")

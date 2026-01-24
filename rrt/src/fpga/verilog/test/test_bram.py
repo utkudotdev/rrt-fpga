@@ -1,20 +1,11 @@
 import random
 
 import cocotb
-from cocotb.triggers import FallingEdge, Timer
-from runner_util import gen_test_runner
+from cocotb.triggers import FallingEdge
+from util import gen_test_runner, generate_clock
 
 ADDR_WIDTH = 8
 DATA_WIDTH = 8
-
-
-async def generate_clock(dut):
-    """Generate clock pulses."""
-    while True:
-        dut.clk.value = 0
-        await Timer(1, unit="ns")
-        dut.clk.value = 1
-        await Timer(1, unit="ns")
 
 
 @cocotb.test()

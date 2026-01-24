@@ -6,8 +6,7 @@
 
 module directed_energy_weapon #(
     parameter GRID_WIDTH_LOG2,
-    parameter GRID_HEIGHT_LOG2,
-    parameter T_BITS
+    parameter GRID_HEIGHT_LOG2
 ) (
     input logic clk,
     input logic rst_n,
@@ -18,10 +17,9 @@ module directed_energy_weapon #(
     output logic occupied,
 
     input logic input_valid,
-    output logic output_valid,
-    output logic ready_for_input,
+    output logic done,
 
-    occupancy_grid_bus.client grid_bus,
+    occupancy_grid_bus.client grid_bus
 );
     // GRID_CELL_WIDTH = 2^(`POINT_BITS) / GRID_WIDTH
     //                 = 2^(`POINT_BITS - GRID_WIDTH_LOG2)
@@ -32,7 +30,7 @@ module directed_energy_weapon #(
 
     occupancy_grid_util#(GRID_WIDTH_LOG2, GRID_HEIGHT_LOG2) grid_util();
 
-    typedef enum logic [1:0] {
+    typedef enum logic [0:0] {
         IDLE,
         TRACING
     } state_t;
@@ -44,6 +42,13 @@ module directed_energy_weapon #(
     logic [GRID_WIDTH_LOG2-1:0] current_cell_x;
     logic [GRID_HEIGHT_LOG2-1:0] current_cell_y;
 
+    // Note that a and b must stay valid throughout the operation
+    logic [GRID_WIDTH_LOG2-1:0] start_cell_x;
+    logic [GRID_HEIGHT_LOG2-1:0] start_cell_y;
+    always_comb begin
+        grid_util.point_to_cell(a, start_cell_x, start_cell_y);
+    end
+
     // Need to have one extra bit to prevent overflow
     logic [GRID_WIDTH_LOG2:0] next_int_cell_x;
     logic [GRID_HEIGHT_LOG2:0] next_int_cell_y;
@@ -53,17 +58,17 @@ module directed_energy_weapon #(
     logic next_x_beyond_end;
     logic next_y_beyond_end;
 
-    logic signed [POINT_MULT_BITS:0] intersection_t_diff;
+    logic signed [`POINT_MULT_BITS:0] intersection_t_diff;
 
     always_comb begin
         // Note that a and b must stay valid throughout the operation
         delta = point_sub(b, a);
 
-        next_int_cell_x = delta.x > 0 ? current_cell_x + 1' : current_cell_x;
-        next_int_cell_y = delta.y > 0 ? current_cell_y + 1' : current_cell_y;
+        next_int_cell_x = delta.x > 0 ? current_cell_x + 1 : {1'b0, current_cell_x};
+        next_int_cell_y = delta.y > 0 ? current_cell_y + 1 : {1'b0, current_cell_y};
 
-        next_intersection.x = next_int_cell_x << GRID_CELL_WIDTH_LOG2;
-        next_intersection.y = next_int_cell_y << GRID_CELL_HEIGHT_LOG2;
+        next_intersection.x = `POINT_BITS'(next_int_cell_x) << GRID_CELL_WIDTH_LOG2;
+        next_intersection.y = `POINT_BITS'(next_int_cell_y) << GRID_CELL_HEIGHT_LOG2;
 
         next_x_beyond_end = delta.x > 0 ? (next_intersection.x >= b.x) : (next_intersection.x <= b.x);
         next_y_beyond_end = delta.y > 0 ? (next_intersection.y >= b.y) : (next_intersection.y <= b.y);
@@ -86,28 +91,27 @@ module directed_energy_weapon #(
 
         next_int_delta = point_sub(next_intersection, a);
 
-        intersection_t_diff = POINT_MULT_BITS'(next_int_delta.x) * POINT_MULT_BITS'(delta.y) 
-                            - POINT_MULT_BITS'(next_int_delta.y) * POINT_MULT_BITS'(delta.x);
+        intersection_t_diff = `POINT_MULT_BITS'(next_int_delta.x) * `POINT_MULT_BITS'(delta.y) 
+                            - `POINT_MULT_BITS'(next_int_delta.y) * `POINT_MULT_BITS'(delta.x);
     end
 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
             state <= IDLE;
-            ready_for_input <= '1;
-            output_valid <= '0;
+            done <= '0;
             current_cell_x <= '0;
             current_cell_y <= '0;
             grid_bus.input_valid <= '0;
+            grid_bus.write_enable <= '0;
         end else begin
             case (state)
                 IDLE: begin
                     if (input_valid) begin
-                        ready_for_input <= '0;
-                        output_valid <= '0;
-                        grid_util.point_to_cell(a, current_cell_x, current_cell_y);
+                        done <= '0;
+                        current_cell_x <= start_cell_x;
+                        current_cell_y <= start_cell_y;
                         state <= TRACING;
                     end else begin
-                        ready_for_input <= '1;
                         state <= IDLE;
                     end
                 end
@@ -121,12 +125,12 @@ module directed_energy_weapon #(
                         if (grid_bus.read_occupied) begin
                             // If the grid is occupied at the current cell, we're done
                             occupied <= '1;
-                            output_valid <= '1;
+                            done <= '1;
                             state <= IDLE;
                         end else if (next_x_beyond_end && next_y_beyond_end) begin
                             // We made it to the end, not occupied 
                             occupied <= '0;
-                            output_valid <= '1;
+                            done <= '1;
                             state <= IDLE;
                         end else begin
                             // We need to go to the next cell
