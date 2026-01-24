@@ -69,7 +69,7 @@ impl<const DIMS: usize, const LEAF_CAP: usize> KdTree<DIMS, LEAF_CAP> {
 
                 let variance = point_indices[..*len]
                     .iter()
-                    .map(|&i| (points[i] - mean))
+                    .map(|&i| points[i] - mean)
                     .map(|p| p.component_mul(&p))
                     .sum::<SVector<f32, DIMS>>()
                     / (total_points - 1) as f32;
