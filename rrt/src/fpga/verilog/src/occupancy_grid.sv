@@ -4,6 +4,46 @@
 `include "membus.sv"
 `include "point.sv"
 
+interface occupancy_grid_bus #(
+    parameter GRID_WIDTH_LOG2,
+    parameter GRID_HEIGHT_LOG2
+);
+    logic [GRID_WIDTH_LOG2-1:0] cell_x;
+    logic [GRID_HEIGHT_LOG2-1:0] cell_y;
+
+    logic input_valid;
+    logic output_valid;
+    logic ready_for_input;
+
+    logic write_enable;
+    logic write_occupied;
+    logic read_occupied;
+
+    modport grid (
+        input cell_x,
+        input cell_y,
+        input input_valid,
+        output output_valid,
+        output ready_for_input,
+
+        input write_enable,
+        input write_occupied,
+        output read_occupied
+    );
+
+    modport client (
+        output cell_x,
+        output cell_y,
+        output input_valid,
+        input output_valid,
+        input ready_for_input,
+
+        output write_enable,
+        output write_occupied,
+        input read_occupied
+    );
+endinterface
+
 module occupancy_grid #(
     parameter GRID_WIDTH_LOG2,
     parameter GRID_HEIGHT_LOG2
@@ -12,16 +52,7 @@ module occupancy_grid #(
     input logic clk,
     input logic rst_n,
 
-    input logic [GRID_WIDTH_LOG2-1:0] cell_x,
-    input logic [GRID_HEIGHT_LOG2-1:0] cell_y,
-
-    input logic input_valid,
-    output logic output_valid,
-    output logic ready_for_input,
-
-    input logic write_enable,
-    input logic write_occupied,
-    output logic read_occupied,
+    occupancy_grid_bus.grid bus,
 
     memory_bus.client mem
 );
@@ -31,12 +62,12 @@ module occupancy_grid #(
     
     // Address calculation
     logic [GRID_WIDTH_LOG2 + GRID_HEIGHT_LOG2 - 1:0] linear_address;
-    assign linear_address = {cell_y, cell_x};
+    assign linear_address = {bus.cell_y, bus.cell_x};
 
     logic [ADDR_WIDTH-1:0] req_word_address;
     logic [DATA_WIDTH_LOG2-1:0] req_bit_off;
     
-    // Synthesis should handle optimization for powrite_enabler-of-2 widths
+    // Synthesis should handle optimization for power-of-2 widths
     assign req_word_address = ADDR_WIDTH'(linear_address / DATA_WIDTH);
     assign req_bit_off = DATA_WIDTH_LOG2'(linear_address % DATA_WIDTH);
 
@@ -63,25 +94,25 @@ module occupancy_grid #(
             req_bit_off_reg <= '0;
             write_occupied_reg <= '0;
             write_enable_reg <= '0;
-            output_valid <= '0;
-            ready_for_input <= '1;
+            bus.output_valid <= '0;
+            bus.ready_for_input <= '1;
         end else begin
             case (state)
                 START_READ: begin
-                    if (input_valid) begin
+                    if (bus.input_valid) begin
                         mem.address <= req_word_address;
                         mem.write_enable <= '0;
 
-                        write_enable_reg <= write_enable;
+                        write_enable_reg <= bus.write_enable;
                         req_bit_off_reg <= req_bit_off;
-                        write_occupied_reg <= write_occupied;
+                        write_occupied_reg <= bus.write_occupied;
 
-                        output_valid <= '0;
-                        ready_for_input <= '0;
+                        bus.output_valid <= '0;
+                        bus.ready_for_input <= '0;
 
                         state <= WAIT_READ;
                     end else begin
-                        ready_for_input <= '1;
+                        bus.ready_for_input <= '1;
 
                         state <= START_READ;
                     end
@@ -104,9 +135,9 @@ module occupancy_grid #(
                     state <= START_READ;
                 end
                 FINISH_READ: begin
-                    read_occupied <= mem.read_data[req_bit_off_reg];
+                    bus.read_occupied <= mem.read_data[req_bit_off_reg];
 
-                    output_valid <= '1;
+                    bus.output_valid <= '1;
 
                     state <= START_READ;
                 end

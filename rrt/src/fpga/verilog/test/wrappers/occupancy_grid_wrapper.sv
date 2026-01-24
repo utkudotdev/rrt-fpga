@@ -24,18 +24,22 @@ module occupancy_grid_wrapper #(
         .clk(clk),
         .bus(bus.memory) 
     );
+
+    occupancy_grid_bus #(.GRID_WIDTH_LOG2(GRID_WIDTH_LOG2), .GRID_HEIGHT_LOG2(GRID_HEIGHT_LOG2)) grid_bus ();
+
+    assign grid_bus.cell_x = cell_x;
+    assign grid_bus.cell_y = cell_y;
+    assign grid_bus.input_valid = input_valid;
+    assign output_valid = grid_bus.output_valid;
+    assign ready_for_input = grid_bus.ready_for_input;
+    assign grid_bus.write_enable = write_enable;
+    assign grid_bus.write_occupied = write_occupied;
+    assign read_occupied = grid_bus.read_occupied;
     
     occupancy_grid #(.GRID_WIDTH_LOG2(GRID_WIDTH_LOG2), .GRID_HEIGHT_LOG2(GRID_HEIGHT_LOG2)) uut (
         .clk(clk),
         .rst_n(rst_n),
-        .cell_x(cell_x),
-        .cell_y(cell_y),
-        .input_valid(input_valid),
-        .output_valid(output_valid),
-        .ready_for_input(ready_for_input),
-        .write_enable(write_enable),
-        .write_occupied(write_occupied),
-        .read_occupied(read_occupied),
+        .bus(grid_bus.grid),
         .mem(bus.client)
     );
 endmodule

@@ -19,22 +19,16 @@ module directed_energy_weapon #(
 
     input logic input_valid,
     output logic output_valid,
+    output logic ready_for_input,
 
-    // Grid interface
-    output logic [GRID_WIDTH_LOG2-1:0] grid_cell_x,
-    output logic [GRID_HEIGHT_LOG2-1:0] grid_cell_y,
-
-    input logic grid_read_occupied,
-
-    output logic grid_input_valid,
-    input logic grid_output_valid,
+    occupancy_grid_bus.client grid_bus,
 );
-    // GRID_CELL_WIDTH = 2^(POINT_BITS) / GRID_WIDTH
-    //                 = 2^(POINT_BITS - GRID_WIDTH_LOG2)
+    // GRID_CELL_WIDTH = 2^(`POINT_BITS) / GRID_WIDTH
+    //                 = 2^(`POINT_BITS - GRID_WIDTH_LOG2)
     //
-    // log2(GRID_CELL_WIDTH) = POINT_BITS - GRID_WIDTH_LOG2
-    localparam GRID_CELL_WIDTH_LOG2 = POINT_BITS - GRID_WIDTH_LOG2;
-    localparam GRID_CELL_HEIGHT_LOG2 = POINT_BITS - GRID_HEIGHT_LOG2;
+    // log2(GRID_CELL_WIDTH) = `POINT_BITS - GRID_WIDTH_LOG2
+    localparam GRID_CELL_WIDTH_LOG2 = `POINT_BITS - GRID_WIDTH_LOG2;
+    localparam GRID_CELL_HEIGHT_LOG2 = `POINT_BITS - GRID_HEIGHT_LOG2;
 
     occupancy_grid_util#(GRID_WIDTH_LOG2, GRID_HEIGHT_LOG2) grid_util();
 
@@ -103,7 +97,7 @@ module directed_energy_weapon #(
             output_valid <= '0;
             current_cell_x <= '0;
             current_cell_y <= '0;
-            grid_input_valid <= '0;
+            grid_bus.input_valid <= '0;
         end else begin
             case (state)
                 IDLE: begin
@@ -118,13 +112,13 @@ module directed_energy_weapon #(
                     end
                 end
                 TRACING: begin
-                    if (!grid_output_valid) begin
+                    if (!grid_bus.output_valid) begin
                         // Wait for the occupancy grid to give us our value
-                        grid_cell_x <= current_cell_x;
-                        grid_cell_y <= current_cell_y;
-                        grid_input_valid <= '1;
+                        grid_bus.cell_x <= current_cell_x;
+                        grid_bus.cell_y <= current_cell_y;
+                        grid_bus.input_valid <= '1;
                     end else begin
-                        if (grid_read_occupied) begin
+                        if (grid_bus.read_occupied) begin
                             // If the grid is occupied at the current cell, we're done
                             occupied <= '1;
                             output_valid <= '1;
