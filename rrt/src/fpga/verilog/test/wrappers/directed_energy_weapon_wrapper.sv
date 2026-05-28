@@ -7,8 +7,8 @@ module directed_energy_weapon_wrapper #(
     input logic clk,
     input logic rst_n,
 
-    input point_t a,
-    input point_t b,
+    input logic [63:0] a,
+    input logic [63:0] b,
 
     output logic occupied,
 
