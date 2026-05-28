@@ -1,8 +1,7 @@
-use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use na::SVector;
 use nalgebra as na;
-use rand::distributions::{Distribution, Uniform};
-use rand::prelude::*;
+use rand::{distr::Uniform, prelude::*};
 use rrt::cpu::kdtree::KdTree;
 
 fn generate_points<const DIMS: usize>(
@@ -47,7 +46,7 @@ fn run_insertion_bench<const DIMS: usize, const LEAF_CAP: usize>(
 
 fn bench_insertion(c: &mut Criterion) {
     let mut rng = StdRng::seed_from_u64(10);
-    let dist = Uniform::new(-1.0, 1.0);
+    let dist = Uniform::new(-1.0, 1.0).unwrap();
 
     {
         let mut group_2d = c.benchmark_group("KDTree_Insert_2D");
@@ -89,7 +88,7 @@ fn run_lookup_bench<const DIMS: usize, const LEAF_CAP: usize>(
             |b, q| {
                 b.iter(|| {
                     for query in q {
-                        black_box(tree.closest_point(*query));
+                        std::hint::black_box(tree.closest_point(*query));
                     }
                 });
             },
@@ -99,7 +98,7 @@ fn run_lookup_bench<const DIMS: usize, const LEAF_CAP: usize>(
 
 fn bench_lookup(c: &mut Criterion) {
     let mut rng = StdRng::seed_from_u64(10);
-    let dist = Uniform::new(-1.0, 1.0);
+    let dist = Uniform::new(-1.0, 1.0).unwrap();
 
     {
         let mut group_2d = c.benchmark_group("KDTree_Lookup_2D");
