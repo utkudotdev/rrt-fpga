@@ -1,12 +1,14 @@
 use na::Vector2;
 use nalgebra as na;
 use rand::Rng;
+use rand::distr::Uniform;
 
 use super::raytrace;
 use crate::cpu::kdtree::KdTree;
 use crate::shared::dfs;
 use crate::shared::grid::OccupancyGrid;
 use crate::{RRTAlgorithm, RRTParameters, RRTResult};
+use rand::prelude::*;
 
 pub struct VanillaRRT;
 
@@ -27,12 +29,14 @@ impl RRTAlgorithm for VanillaRRT {
         let mut found = false;
         let mut end_idx = 0;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         while kd_tree.len() < params.num_points {
             let mut conf = Vector2::<f32>::zeros();
             for i in 0..conf.len() {
-                conf[i] = rng.gen_range(params.min_bound[i]..=params.max_bound[i]);
+                conf[i] = rng.sample(
+                    Uniform::new_inclusive(params.min_bound[i], params.max_bound[i]).unwrap(),
+                );
             }
 
             let nearest_idx = kd_tree.closest_point(conf).unwrap();

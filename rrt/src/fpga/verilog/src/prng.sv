@@ -1,11 +1,11 @@
 module prng64 (
-    input wire clk,
-    input wire rst_n,
-    input wire enable,
-    input wire [63:0] seed,
+    input clk,
+    input rst_n,
+    input enable,
+    input [63:0] seed,
     output logic [63:0] out
 );
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             out <= seed;
         end else if (enable) begin

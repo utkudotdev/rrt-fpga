@@ -6,10 +6,14 @@ edition = "2024"
 [dependencies]
 nalgebra.workspace = true
 bitvec = "1.0.1"
-rand = "0.8.5"
+rand = "0.10.1"
 
 [dev-dependencies]
-criterion = "0.5.1"
+criterion = "0.8.2"
+marlin = { git = "https://github.com/utkudotdev/marlin.git", rev = "d7600b", features = [
+    "verilog",
+] }
+snafu = "0.8.5"
 
 [[bench]]
 name = "kdtree"

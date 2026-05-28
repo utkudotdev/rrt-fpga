@@ -69,7 +69,7 @@ impl<const DIMS: usize, const LEAF_CAP: usize> KdTree<DIMS, LEAF_CAP> {
 
                 let variance = point_indices[..*len]
                     .iter()
-                    .map(|&i| (points[i] - mean))
+                    .map(|&i| points[i] - mean)
                     .map(|p| p.component_mul(&p))
                     .sum::<SVector<f32, DIMS>>()
                     / (total_points - 1) as f32;
@@ -200,7 +200,10 @@ impl<const DIMS: usize, const LEAF_CAP: usize> KdTree<DIMS, LEAF_CAP> {
 
 #[cfg(test)]
 mod tests {
-    use rand::prelude::*;
+    use rand::{
+        distr::{Uniform, uniform::UniformFloat},
+        prelude::*,
+    };
 
     use super::*;
 
@@ -208,20 +211,20 @@ mod tests {
         count_points: usize,
         count_queries: usize,
     ) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut points = Vec::with_capacity(count_points);
         for _ in 0..count_points {
             points.push(SVector::<f32, 2>::new(
-                rng.r#gen::<f32>(),
-                rng.r#gen::<f32>(),
+                rng.random::<f32>(),
+                rng.random::<f32>(),
             ));
         }
 
         let mut queries = Vec::with_capacity(count_queries);
         for _ in 0..count_queries {
             queries.push(SVector::<f32, 2>::new(
-                rng.r#gen::<f32>(),
-                rng.r#gen::<f32>(),
+                rng.random::<f32>(),
+                rng.random::<f32>(),
             ));
         }
 

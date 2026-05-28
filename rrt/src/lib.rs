@@ -1,4 +1,5 @@
 pub mod cpu;
+pub mod fpga;
 pub mod shared;
 
 extern crate nalgebra as na;
